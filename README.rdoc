@@ -27,11 +27,16 @@ Basic usage to create a VM from existing VM template:
 
 
 More verbose example using a kickstart file and booting the Centos 5 default template:
-  knife xapi guest create "MySpiffyBox" "pub_network" --host http://sandbox/ -B "dns=8.8.8.8 ks=http://192.168.6.4/repo/ks/default.ks ip=192.168.6.7 netmask=255.255.255.0 gateway=192.168.6.1" -R http://192.168.6.5/repo/centos/5/os/x86_64 -C 4 -M 4g -D 5g 
-* -B is boot args where i am assigning all the centos/rhel boot args for Ip setup and kickstart file 
-* -R is the repo URL used by xenserver to start the net install 
-* -C is the number of cpus for this gues
-* -M is the Memory size 
-* -D is the disk size
+  knife xapi guest create "MySpiffyBox" "pub_network" --host http://sandbox/ \
+    -B "dns=8.8.8.8 ks=http://192.168.6.4/repo/ks/default.ks ip=192.168.6.7 netmask=255.255.255.0 gateway=192.168.6.1" \
+    -R http://192.168.6.5/repo/centos/5/os/x86_64 -C 4 -M 4g -D 5g 
+*-B Boot args where i am assigning all the centos/rhel boot args for Ip setup and kickstart file 
+*-R Repo URL used by xenserver to start the net install 
+*-C Number of cpus for this guest
+*-M Memory size 
+*-D Disk size
+
+Use Knife builtin help schematic for more info
+  knife xapi guest create --help
 
 
