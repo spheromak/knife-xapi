@@ -96,7 +96,7 @@ class Chef
         ui.msg "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}" 
         vm_ref = xapi.VM.clone(template_ref, server_name)  
 
-#        begin
+        begin
           xapi.VM.set_name_description(vm_ref, "VM built by knife-xapi as #{server_name}")
 
           # configure the install repo
@@ -154,12 +154,12 @@ class Chef
           ui.msg "Starting new Guest: #{h.color( provisioned, :cyan)} "
           xapi.Async.VM.start(vm_ref, false, true)
 
-#        rescue Exception => e
-#          ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
-#          ui.error "#{h.color( e.backtrace, :yellow)}"
-#          
-#          cleanup(vm_ref)
-#        end
+        rescue Exception => e
+          ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
+          ui.error "#{h.color( e.backtrace, :yellow)}"
+          
+          cleanup(vm_ref)
+        end
         # TODO: bootstrap
       end
 
