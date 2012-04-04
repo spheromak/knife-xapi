@@ -33,7 +33,8 @@ class Chef
         vms = xapi.VM.get_all
         vms.each do |vm|
           record = xapi.VM.get_record(vm)
-          puts record
+          puts record['name_label'] if not record['is_a_template'] == true
+          nil
         end
       end
 
