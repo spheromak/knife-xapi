@@ -105,9 +105,8 @@ class Chef
           xapi.VM.set_other_config(vm_ref, { "install-repository" => repo } )
     
           cpus = Chef::Config[:knife][:xapi_cpus] || 2
-          ui.msg "Setting up CPUS #{ h.color cpus, :cyan }"
-          xapi.VM.set_VCPUs_max( vm_ref, cpus.to_s )
-          xapi.VM.set_VCPUs_at_startup( vm_ref, cpus.to_s )
+          xapi.VM.set_VCPUs_max( vm_ref, cpus )
+          xapi.VM.set_VCPUs_at_startup( vm_ref, cpus )
 
           memory_size = input_to_bytes( Chef::Config[:knife][:xapi_mem] || "1g" ).to_s
           ui.msg "Mem size: #{ h.color( memory_size, :cyan)}" 
@@ -144,19 +143,27 @@ class Chef
           # Create the VDI
           disk_size = Chef::Config[:knife][:xapi_disk_size] || "8g" 
           vdi_ref = create_vdi("#{server_name}-root", sr_ref, disk_size )
+          # if vdi_ref is nill we need to bail/cleanup
+          cleanup(vm_ref) unless vdi_ref
+          ui.msg( "#{ h.color "OK", :green}" )
 
           # Attach the VDI to the VM
           vbd_ref = create_vbd(vm_ref, vdi_ref, 0)
-          
+          cleanup(vm_ref) unless vbd_ref 
+          ui.msg( "#{ h.color "OK", :green}" )
+ 
           ui.msg "Provisioning new Guest: #{h.color(vm_ref, :bold, :cyan )}" 
           provisioned = xapi.VM.provision(vm_ref)
 
           ui.msg "Starting new Guest: #{h.color( provisioned, :cyan)} "
-          xapi.Async.VM.start(vm_ref, false, true)
+          
+          task = xapi.Async.VM.start(vm_ref, false, true)
+          wait_on_task(task) 
+          ui.msg( "#{ h.color "Done!", :green}" )
 
         rescue Exception => e
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
-          ui.error "#{h.color( e.backtrace, :yellow)}"
+          ui.msg "#{h.color( e.backtrace, :yellow)}"
           
           cleanup(vm_ref)
         end
