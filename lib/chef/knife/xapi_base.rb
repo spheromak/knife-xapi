@@ -1,6 +1,8 @@
 # Xapi Base Module
 #
-# Description:: Setup the Session and auth for xapi
+# Description:: Setup the Session and auth for xapi 
+#   other common methods used for talking with the xapi
+#
 # Author:: Jesse Nelson <spheromak@gmail.com>
 #
 # Copyright:: Copyright (c) 2012, Jesse Nelson
@@ -86,6 +88,7 @@ class Chef::Knife
     def get_template(template)
       xapi.VM.get_by_name_label(template).first
     end
+
     #
     # find a template matching what the user provided 
     # 
@@ -128,7 +131,24 @@ class Chef::Knife
       end
       return nil
     end
-  
+ 
+    # present a list of options for a user to select 
+    # return the selected item
+    def user_select(items)
+      choose do |menu|
+        menu.index  = :number
+        menu.prompt = "Please Choose One:"
+        menu.select_by =  :index_or_name
+        items.each do |item|
+          menu.choice item.to_sym do |command| 
+            say "Using: #{command}" 
+            selected = command.to_s
+          end
+        end
+        menu.choice :exit do exit 1 end
+      end
+    end
+
     # generate a random mac address
     def generate_mac 
       ("%02x"%(rand(64)*4|2))+(0..4).inject(""){|s,x|s+":%02x"%rand(256)}
