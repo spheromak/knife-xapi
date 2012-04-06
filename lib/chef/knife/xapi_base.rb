@@ -19,7 +19,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-XAPI_TEMP_REGEX ||= /^CentOS 5.*\(64-bit\)/
+# ruby 1.8.7 doesn't like ||= with  Constants
+unless defined?(XAPI_TEMP_REGEX)
+  XAPI_TEMP_REGEX = /^CentOS 5.*\(64-bit\)/
+end
 
 require 'chef/knife'
 require 'units/standard'
@@ -27,9 +30,7 @@ require 'units/standard'
 class Chef::Knife
     module XapiBase
 
-
     def self.included(includer)
-
       includer.class_eval do
         deps do
           require 'xenapi'
@@ -183,6 +184,7 @@ class Chef::Knife
     end
 
     # convert 1g/1m/1t to bytes
+    # rounds to whole numbers
     def input_to_bytes(size)
       case size
       when /g|gb/i
@@ -208,11 +210,40 @@ class Chef::Knife
         "read_only" => false,
         "other_config" => {},
       }
-      
-      vdi_ref = xapi.VDI.create( vdi_record ) 
-      ui.msg "VDI: #{h.color( name, :cyan )} #{h.color( vdi_ref, :cyan )} created"
-      vdi_ref
+    
+      # Async create the VDI
+      task = xapi.Async.VDI.create(vdi_record)
+      ui.msg "waiting for VDI Create"
+      vdi_ref = get_task_ref(task)
     end
+
+
+    # sit and wait for taks to exit pending state
+    def wait_on_task(task)
+      while xapi.task.get_status(task) == "pending"
+        progress = xapi.task.get_progress(task)
+        sleep 1
+      end
+    end
+   
+    # return the opaque ref of the task that was run by a task record if it succeded.
+    # else it returns nil 
+    def get_task_ref(task)
+      wait_on_task(task)
+      case xapi.task.get_status(task) 
+      when "success"
+        # xapi task record returns result as  <value>OpaqueRef:....</value>  
+        # we want the ref. this way it will work if they fix it to return jsut the ref
+        ref = xapi.task.get_result(task).match(/OpaqueRef:[^<]+/).to_s
+        #cleanup our task
+        xapi.task.destroy(task)
+        return ref
+      else 
+        ui.msg( "#{h.color 'ERROR:', :red } Task returned: #{xapi.task.get_result(task)}"   )
+        return nil
+      end
+    end
+
 
     # create vbd and return a ref 
     def create_vbd(vm_ref, vdi_ref, position)
@@ -230,9 +261,9 @@ class Chef::Knife
         "type" => "Disk"
       }
 
-      vbd_ref = xapi.VBD.create(vbd_record)
-      ui.msg "VBD: #{h.color vbd_ref, :cyan } created" 
-      vbd_ref
+      task = xapi.Async.VBD.create(vbd_record)
+      ui.msg "Waiting for VBD create"
+      vbd_ref = get_task_ref(task) 
     end
 
   end
