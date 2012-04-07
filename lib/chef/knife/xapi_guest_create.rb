@@ -1,9 +1,6 @@
 #
 # Author:: Jesse Nelson (<spheromak@gmail.com>)
 #
-#  Based on xapi plugin written by 
-# Author:: Adam Jacob (<adam@opscode.com>)
-#
 # Copyright:: Copyright (c) 2012 Jesse Nelson
 #
 # License:: Apache License, Version 2.0
