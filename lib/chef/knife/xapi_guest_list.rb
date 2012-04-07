@@ -1,10 +1,8 @@
 #
+# Author:: Jesse Nelson <spheromak@gmail.com> 
 # Author:: Seung-jin/Sam Kim (<seungjin.kim@me.comm>)
 #
-#  Based on xapi plugin written by 
-# Author:: Adam Jacob (<adam@opscode.com>)
-#
-# Copyright:: Copyright (c) 2012 Seung-jin Kim
+# Copyright:: Copyright (c) 2012 Jesse Nelson
 #
 # License:: Apache License, Version 2.0
 #
@@ -27,13 +25,17 @@ class Chef
     class XapiGuestList < Knife
       include Chef::Knife::XapiBase
 
-      banner "knife xapi guest list [NETWORKS] (options)"
+      banner "knife xapi guest list"
 
       def run
         vms = xapi.VM.get_all
+        printf "%-25s  %-46s  %-36s \n", "Name Label", "Ref", "UUID"
         vms.each do |vm|
           record = xapi.VM.get_record(vm)
-          puts "#{record['uuid']}\t#{record['name_label']}" if not record['is_a_template'] == true
+          # make  sure you can't do bad things to these VM's
+          next if record['is_a_template'] 
+          next if record['name_label'] =~ /control domain/i
+          printf "%-25s  %46s  %36s \n", record['name_label'], vm, record['uuid']
         end
       end
 
