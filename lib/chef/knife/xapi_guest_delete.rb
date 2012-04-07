@@ -27,12 +27,23 @@ class Chef
       include Chef::Knife::XapiBase
 
       banner "knife xapi guest delete NAME_LABEL (options)"
-        
+
+      option :uuid,
+          :short => "-U",
+          :long => "--uuid",
+          :description => "Treat the label as a UUID not a name label"
+
       def run 
         server_name = @name_args[0]
         $stdout.sync = true
+        vms = [] 
+        if config[:uuid]
+          vms << xapi.VM.get_by_uuid(server_name)
+        else
+          vms << xapi.VM.get_by_name_label(server_name)
+        end
+        vms.flatten! 
 
-        vms = xapi.VM.get_by_name_label(server_name)
         if vms.empty? 
           ui.msg "VM not found: #{h.color server_name, :red}" 
           exit 1
@@ -55,7 +66,6 @@ class Chef
         task = xapi.Async.VM.destroy(vm) 
         wait_on_task(task)
         print " #{h.color "Done", :green}\n"
-
       end
 
     end
