@@ -21,7 +21,7 @@ Chef::Config[:knife][:xapi_kernel_params] :: Optional Boot paramaters to pass to
 Chef::Config[:knife][:xapi_bootstrap] ::  Not implemented yet, but will be the bootstrap script to execute after guest create
 
 ==Usage
-
+=Create
 Basic usage to create a VM from existing VM template:
   knife xapi guest create "NewBox" "public"  --xapi-vm-template "MyBaseBox"   --host http://sandbox/ 
 
@@ -38,5 +38,21 @@ More verbose example using a kickstart file and booting the Centos 5 default tem
 
 Use Knife builtin help schematic for more info
   knife xapi guest create --help
+
+=Delete 
+Delete is pretty simple. When there are multiple vms with a name label you should be prompted to select one
+    knife xapi guest delete  testing 
+
+If you know the UUID of the VM you can specify --uuid
+   knife xapi guest delete b461c0d2-d24d-bc02-3231-711101f57b8e --uuid
+
+=List
+List shows the vm's on the pool/host Ignoring Controll domains and templates. VM OpaqueRef and UUID are displayed which can be
+  knife xapi guest list 
+  Name Label                 Ref                                             UUID                                 
+  test-server                OpaqueRef:82065b80-55ff-63ce-ef89-6b33fb5fd272  9b0a0afa-5573-7875-b787-47fbfa2548a4 
+  tester                     OpaqueRef:2d239fbd-bff6-4e60-f675-e1d2530199d2  de760651-2db8-6f81-0783-7b8364f591fd 
+  test-client                OpaqueRef:e4bbd801-c9be-e355-2a22-2ca468a90a81  35156957-45f4-02f8-6de9-6adbcd5e0c6d 
+  test-client                OpaqueRef:f5b562f8-a493-f535-335e-ae70b3177869  f46e4d6b-bd9e-e47b-5f0d-b849ff75c5ef 
 
 
