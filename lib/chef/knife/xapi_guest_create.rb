@@ -26,13 +26,12 @@ class Chef
     class XapiGuestCreate < Knife
       include Chef::Knife::XapiBase
 
-      banner "knife xapi guest create NAME [NETWORKS] (options)"
+      deps do
+        require 'chef/knife/bootstrap'
+        Chef::Knife::Bootstrap.load_deps
+      end
 
-      option :bootstrap,
-        :short => "-B BOOTSTRAP",
-        :long => "--xapi-bootstrap BOOTSTRAP",
-        :description => "bootstrap template to push to the server",
-        :proc => Proc.new { |bootstrap| Chef::Config[:knife][:xapi_bootstrap] = bootstrap }
+      banner "knife xapi guest create NAME [NETWORKS] (options)"
 
       option :vm_template,
         :short => "-T Template Name Label",
@@ -76,12 +75,113 @@ class Chef
         :description => "Ammount of memory the VM should have specify with m g etc 512m, 2g if no unit spcified it assumes gigabytes",
         :proc => Proc.new {|mem| Chef::Config[:knife][:xapi_mem] = mem } 
 
+      option :chef_node_name,
+        :short => "-N NAME",
+        :long => "--node-name NAME",
+        :description => "The Chef node name for your new node"
+
+      option :ssh_key_name,
+        :short => "-S KEY",
+        :long => "--ssh-key KEY",
+        :description => "The SSH key id",
+        :proc => Proc.new { |key| Chef::Config[:knife][:xapi_ssh_key_id] = key }
+
+      option :ssh_user,
+        :short => "-x USERNAME",
+        :long => "--ssh-user USERNAME",
+        :description => "The ssh username",
+        :default => "root"
+
+      option :ssh_password,
+        :short => "-P PASSWORD",
+        :long => "--ssh-password PASSWORD",
+        :description => "The ssh password"
+
+      option :ssh_port,
+        :short => "-p PORT",
+        :long => "--ssh-port PORT",
+        :description => "The ssh port",
+        :default => "22",
+        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_port] = key }
+
+      option :bootstrap_version,
+        :long => "--bootstrap-version VERSION",
+        :description => "The version of Chef to install",
+        :proc => Proc.new { |v| Chef::Config[:knife][:bootstrap_version] = v }
+
+      option :distro,
+        :short => "-d DISTRO",
+        :long => "--distro DISTRO",
+        :description => "Bootstrap a distro using a template",
+        :proc => Proc.new { |d| Chef::Config[:knife][:distro] = d },
+        :default => "ubuntu10.04-gems"
+
+      option :template_file,
+        :long => "--template-file TEMPLATE",
+        :description => "Full path to location of template to use",
+        :proc => Proc.new { |t| Chef::Config[:knife][:template_file] = t },
+        :default => false
+     
+      option :run_list,
+        :short => "-r RUN_LIST",
+        :long => "--run-list RUN_LIST",
+        :description => "Comma separated list of roles/recipes to apply",
+        :proc => lambda { |o| o.split(/[\s,]+/) },
+        :default => [] 
+
+      def tcp_test_ssh(hostname)
+        tcp_socket = TCPSocket.new(hostname, config[:ssh_port])
+        readable = IO.select([tcp_socket], nil, nil, 5)
+        if readable
+          Chef::Log.debug("sshd accepting connections on #{hostname}, banner is #{tcp_socket.gets}")
+          yield
+          true
+        else
+          false
+        end
+      rescue SocketError
+        sleep 2
+        false
+      rescue Errno::ETIMEDOUT
+        false
+      rescue Errno::EPERM
+        false
+      rescue Errno::ECONNREFUSED
+        sleep 2
+        false
+      # This happens on EC2 quite often
+      rescue Errno::EHOSTUNREACH
+        sleep 2
+        false
+      ensure
+        tcp_socket && tcp_socket.close
+      end
+
       # destroy/remove VM refs and exit
       def cleanup(vm_ref)
         ui.warn "Clenaing up work and exiting"
         xapi.VM.destroy(vm_ref)
         exit 1 
       end
+
+
+      def bootstrap_for_node(server,fqdn)
+        bootstrap = Chef::Knife::Bootstrap.new
+        bootstrap.name_args = [fqdn]
+        bootstrap.config[:run_list] = config[:run_list]
+        bootstrap.config[:ssh_user] = config[:ssh_user]
+        bootstrap.config[:ssh_port] = config[:ssh_port]
+        bootstrap.config[:identity_file] = config[:identity_file]
+        bootstrap.config[:chef_node_name] = config[:chef_node_name] || server.id
+        bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
+        bootstrap.config[:distro] = locate_config_value(:distro)
+        bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
+        bootstrap.config[:template_file] = locate_config_value(:template_file)
+        bootstrap.config[:environment] = config[:environment]
+        bootstrap.config[:no_host_key_verify] = config[:no_host_key_verify]
+        bootstrap
+      end
+
 
       def run 
         server_name = @name_args[0]
@@ -161,6 +261,14 @@ class Chef
           task = xapi.Async.VM.start(vm_ref, false, true)
           wait_on_task(task) 
           ui.msg( "#{ h.color "Done!", :green}" )
+
+        
+          exit 0 unless locate_config_value(:run_list)       
+
+          print(".") until tcp_test_ssh(fqdn) {
+            sleep @initial_sleep_delay ||=  10
+            puts("done")
+          }
 
         rescue Exception => e
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"

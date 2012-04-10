@@ -84,6 +84,11 @@ class Chef::Knife
       end
     end
 
+    def locate_config_value(key)
+      key = key.to_sym
+      Chef::Config[:knife][key] || config[key]
+    end
+
     # get template by name_label
     def get_template(template)
       xapi.VM.get_by_name_label(template).first
