@@ -29,13 +29,13 @@ class Chef
 
       def run
         vms = xapi.VM.get_all
-        printf "%-25s  %-46s  %-36s \n", "Name Label", "Ref", "UUID"
+        printf "%-25s  %-12s  %-46s  %-36s \n", "Name Label", "State", "Ref", "UUID"
         vms.each do |vm|
           record = xapi.VM.get_record(vm)
           # make  sure you can't do bad things to these VM's
           next if record['is_a_template'] 
           next if record['name_label'] =~ /control domain/i
-          printf "%-25s  %46s  %36s \n", record['name_label'], vm, record['uuid']
+          printf "%-25s  %-12s  %46s  %36s \n", record['name_label'], record['power_state'], vm, record['uuid']
         end
       end
 
