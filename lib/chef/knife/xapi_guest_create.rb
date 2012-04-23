@@ -116,7 +116,7 @@ class Chef
           #
           boot_args = Chef::Config[:knife][:xapi_kernel_params] || "graphical utf8"
           # if no hostname param set hostname to given vm name
-          boot_args << "hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/) 
+          boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/) 
           ui.msg "Setting Boot Args: #{h.color boot_args, :cyan}"
           xapi.VM.set_PV_args( vm_ref, boot_args ) 
 
