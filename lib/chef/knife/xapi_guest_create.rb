@@ -101,7 +101,7 @@ class Chef
           ui.msg "Setting Install Repo: #{h.color(repo,:bold, :cyan)}"
           xapi.VM.set_other_config(vm_ref, { "install-repository" => repo } )
     
-          cpus = Chef::Config[:knife][:xapi_cpus] || 2
+          cpus = Chef::Config[:knife][:xapi_cpus].to_s || "2"
           xapi.VM.set_VCPUs_max( vm_ref, cpus )
           xapi.VM.set_VCPUs_at_startup( vm_ref, cpus )
 
@@ -164,7 +164,9 @@ class Chef
 
         rescue Exception => e
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
-          ui.msg "#{h.color( e.backtrace, :yellow)}"
+          # have to use join here to pass a string to highline
+          puts "Nested backtrace:"
+          ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
           
           cleanup(vm_ref)
         end
