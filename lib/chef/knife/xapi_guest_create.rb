@@ -262,10 +262,15 @@ class Chef
           wait_on_task(task) 
           ui.msg( "#{ h.color "Done!", :green}" )
 
-        
           exit 0 unless locate_config_value(:run_list)       
 
-          print(".") until tcp_test_ssh(fqdn) {
+          guest_ip = ""
+          while guest_ip.empty?
+            ip = xapi.VM_guest_metrics.get_networks(vm_ref)
+            puts "GUEST IP: #{guest_ip}"  
+          end
+
+          print(".") until tcp_test_ssh(guest_ip) {
             sleep @initial_sleep_delay ||=  10
             puts("done")
           }
