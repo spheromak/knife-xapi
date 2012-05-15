@@ -165,14 +165,14 @@ class Chef
       end
 
 
-      def bootstrap_for_node(server,fqdn)
+      def bootstrap_for_node(fqdn, ip)
         bootstrap = Chef::Knife::Bootstrap.new
         bootstrap.name_args = [fqdn]
         bootstrap.config[:run_list] = config[:run_list]
         bootstrap.config[:ssh_user] = config[:ssh_user]
         bootstrap.config[:ssh_port] = config[:ssh_port]
         bootstrap.config[:identity_file] = config[:identity_file]
-        bootstrap.config[:chef_node_name] = config[:chef_node_name] || server.id
+        bootstrap.config[:chef_node_name] = config[:chef_node_name] ||  fqdn
         bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
         bootstrap.config[:distro] = locate_config_value(:distro)
         bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
@@ -264,16 +264,29 @@ class Chef
 
           exit 0 unless locate_config_value(:run_list)       
 
+          ui.msg "Polling to get ip address" 
           guest_ip = ""
           while guest_ip.empty?
-            ip = xapi.VM_guest_metrics.get_networks(vm_ref)
-            puts "GUEST IP: #{guest_ip}"  
+            print(".") 
+            vgm =  xapi.VM.get_guest_metrics(vm_ref)
+            next if "OpaqueRef:NULL" == vgm
+            networks = xapi.VM_guest_metrics.get_networks(vgm)
+            if networks.has_key?("0/ip")
+              guest_ip = networks["0/ip"]
+            end
+            print guest_ip
+            sleep 5
           end
+          puts " " 
+          ui.msg "GUEST IP: #{guest_ip} waiting for ssh"  
 
           print(".") until tcp_test_ssh(guest_ip) {
             sleep @initial_sleep_delay ||=  10
             puts("done")
           }
+
+          ui.msg "running bootstrap" 
+          bootstrap_for_node(server_name, guest_ip).run
 
         rescue Exception => e
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"

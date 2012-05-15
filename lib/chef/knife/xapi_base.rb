@@ -28,6 +28,7 @@ end
 
 require 'chef/knife'
 require 'units/standard'
+require 'xenapi'
 
 class Chef::Knife
     module XapiBase
