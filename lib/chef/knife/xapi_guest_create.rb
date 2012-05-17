@@ -160,7 +160,18 @@ class Chef
       # destroy/remove VM refs and exit
       def cleanup(vm_ref)
         ui.warn "Clenaing up work and exiting"
-        xapi.VM.destroy(vm_ref)
+        # shutdown and dest
+        unless xapi.VM.get_power_state(vm_ref) == "Halted"
+          print "Shutting down Guest"
+          task = xapi.Async.VM.hard_shutdown(vm_ref)
+          wait_on_task(task)
+          print " #{h.color "Done", :green} \n"
+        end
+
+        print "Destroying Guest"
+        task = xapi.Async.VM.destroy(vm_ref)
+        wait_on_task(task)
+        print " #{h.color "Done", :green} \n"
         exit 1 
       end
 
@@ -178,7 +189,7 @@ class Chef
         bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
         bootstrap.config[:template_file] = locate_config_value(:template_file)
         bootstrap.config[:environment] = config[:environment]
-        bootstrap.config[:no_host_key_verify] = config[:no_host_key_verify]
+        bootstrap.config[:no_host_key_verify] = true
         bootstrap
       end
 
@@ -256,7 +267,7 @@ class Chef
           ui.msg "Provisioning new Guest: #{h.color(vm_ref, :bold, :cyan )}" 
           provisioned = xapi.VM.provision(vm_ref)
 
-          ui.msg "Starting new Guest: #{h.color( provisioned, :cyan)} "
+          ui.msg "Starting new Guest #{h.color( provisioned, :cyan)} "
           
           task = xapi.Async.VM.start(vm_ref, false, true)
           wait_on_task(task) 
@@ -275,7 +286,7 @@ class Chef
               guest_ip = networks["0/ip"]
             end
             print guest_ip
-            sleep 5
+            sleep 15
           end
           puts " " 
           ui.msg "GUEST IP: #{guest_ip} waiting for ssh"  
