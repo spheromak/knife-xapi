@@ -176,24 +176,6 @@ class Chef
       end
 
 
-      def bootstrap_for_node(fqdn, ip)
-        bootstrap = Chef::Knife::Bootstrap.new
-        bootstrap.name_args = [fqdn]
-        bootstrap.config[:run_list] = config[:run_list]
-        bootstrap.config[:ssh_user] = config[:ssh_user]
-        bootstrap.config[:ssh_port] = config[:ssh_port]
-        bootstrap.config[:identity_file] = config[:identity_file]
-        bootstrap.config[:chef_node_name] = config[:chef_node_name] ||  fqdn
-        bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
-        bootstrap.config[:distro] = locate_config_value(:distro)
-        bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
-        bootstrap.config[:template_file] = locate_config_value(:template_file)
-        bootstrap.config[:environment] = config[:environment]
-        bootstrap.config[:no_host_key_verify] = true
-        bootstrap
-      end
-
-
       def run 
         server_name = @name_args[0]
         $stdout.sync = true
@@ -297,7 +279,26 @@ class Chef
           }
 
           ui.msg "running bootstrap" 
-          bootstrap_for_node(server_name, guest_ip).run
+
+
+
+          bootstrap = Chef::Knife::Bootstrap.new
+          bootstrap.name_args= [ guest_ip ]
+          bootstrap.config[:run_list] = config[:run_list]
+          bootstrap.config[:ssh_user] = config[:ssh_user]
+          bootstrap.config[:ssh_port] = config[:ssh_port]
+          bootstrap.config[:ssh_password] = config[:ssh_password]
+          bootstrap.config[:identity_file] = config[:identity_file]
+          bootstrap.config[:chef_node_name] = config[:chef_node_name] || server_name
+          bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
+          bootstrap.config[:distro] = locate_config_value(:distro)
+          bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
+          bootstrap.config[:template_file] = locate_config_value(:template_file)
+          bootstrap.config[:environment] = config[:environment]
+          bootstrap.config[:host_key_verify] = false
+          bootstrap.config[:run_list] = config[:run_list]
+          bootstrap.run
+
 
         rescue Exception => e
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
