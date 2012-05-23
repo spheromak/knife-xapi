@@ -117,6 +117,7 @@ class Chef
         :default => "ubuntu10.04-gems"
 
       option :template_file,
+        :short => "-F FILEPATH",
         :long => "--template-file TEMPLATE",
         :description => "Full path to location of template to use",
         :proc => Proc.new { |t| Chef::Config[:knife][:template_file] = t },
@@ -257,7 +258,7 @@ class Chef
 
           exit 0 unless locate_config_value(:run_list)       
 
-          ui.msg "Polling to get ip address" 
+          ui.msg "Waiting for guest ip address" 
           guest_ip = ""
           while guest_ip.empty?
             print(".") 
