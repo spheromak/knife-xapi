@@ -25,6 +25,7 @@ class Chef
   class Knife
     class XapiGuestCreate < Knife
       include Chef::Knife::XapiBase
+      require 'timeout'
 
       deps do
         require 'chef/knife/bootstrap'
@@ -38,6 +39,12 @@ class Chef
         :long => "--xapi-vm-template",
         :description => "xapi template name to create from. accepts an string or regex",
         :proc => Proc.new { |template| Chef::Config[:knife][:xapi_vm_template] = template }
+
+      option :domain,
+        :short => "-f Name",
+        :long => "--domain Name",
+        :description => "the domain name for the guest",
+        :proc => Proc.new { |domain| Chef::Config[:knife][:xapi_domainname] = domain }
 
       option :install_repo,
         :short => "-R If you're using a builtin template you will need to specify a repo url",
@@ -158,9 +165,32 @@ class Chef
         tcp_socket && tcp_socket.close
       end
 
+      def get_guest_ip(vm_ref)
+        begin
+          timeout(480) do
+            ui.msg "Waiting for guest ip address" 
+            guest_ip = ""
+            while guest_ip.empty?
+              print(".") 
+              sleep  @initial_sleep_delay ||=  10
+              vgm =  xapi.VM.get_guest_metrics(vm_ref)
+              next if "OpaqueRef:NULL" == vgm
+              networks = xapi.VM_guest_metrics.get_networks(vgm)
+              if networks.has_key?("0/ip")
+                guest_ip = networks["0/ip"]
+              end
+            end
+            puts "\n" 
+            return guest_ip
+          end 
+        rescue Timeout::Error
+          ui.msg "Timeout waiting for XAPI to report IP address "
+        end
+      end
+
       # destroy/remove VM refs and exit
       def cleanup(vm_ref)
-        ui.warn "Clenaing up work and exiting"
+        ui.warn "Cleaning up work and exiting"
         # shutdown and dest
         unless xapi.VM.get_power_state(vm_ref) == "Halted"
           print "Shutting down Guest"
@@ -209,8 +239,13 @@ class Chef
           # setup the Boot args
           #
           boot_args = Chef::Config[:knife][:xapi_kernel_params] || "graphical utf8"
+          domainname = Chef::Config[:knife][:xapi_domainname] || ""
+
           # if no hostname param set hostname to given vm name
           boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/) 
+          # if domainname is supplied we put that in there as well
+          boot_args << " domainname=#{domainname}" unless boot_args.match(/domainname=.+\s?/) 
+
           ui.msg "Setting Boot Args: #{h.color boot_args, :cyan}"
           xapi.VM.set_PV_args( vm_ref, boot_args ) 
 
@@ -257,34 +292,38 @@ class Chef
           ui.msg( "#{ h.color "Done!", :green}" )
 
           exit 0 unless locate_config_value(:run_list)       
+        rescue Exception => e
+          ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
+          # have to use join here to pass a string to highline
+          puts "Nested backtrace:"
+          ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
+          
+          cleanup(vm_ref)
+        end
 
-          ui.msg "Waiting for guest ip address" 
-          guest_ip = ""
-          while guest_ip.empty?
-            print(".") 
-            vgm =  xapi.VM.get_guest_metrics(vm_ref)
-            next if "OpaqueRef:NULL" == vgm
-            networks = xapi.VM_guest_metrics.get_networks(vgm)
-            if networks.has_key?("0/ip")
-              guest_ip = networks["0/ip"]
-            end
-            print guest_ip
-            sleep 15
+        guest_addr = get_guest_ip(vm_ref)
+        if guest_addr.nil? or guest_addr.empty?
+          ui.msg("ip seems wrong using host+domain name instead")
+          guest_addr = "#{host_name}.#{domainname}"
+        end
+        ui.msg "Trying to connect to guest @ #{guest_addr} "
+
+        begin
+          timeout(480) do
+            print(".") until tcp_test_ssh(guest_addr) {
+              sleep @initial_sleep_delay ||=  10
+              puts("done")
+            }
           end
-          puts " " 
-          ui.msg "GUEST IP: #{guest_ip} waiting for ssh"  
-
-          print(".") until tcp_test_ssh(guest_ip) {
-            sleep @initial_sleep_delay ||=  10
-            puts("done")
-          }
-
-          ui.msg "running bootstrap" 
+        rescue Timeout::Error
+          ui.msg "Timeout trying to login cleaning up"
+          cleanup(vm_ref)
+        end
 
 
-
+        begin 
           bootstrap = Chef::Knife::Bootstrap.new
-          bootstrap.name_args= [ guest_ip ]
+          bootstrap.name_args = [ guest_addr ]
           bootstrap.config[:run_list] = config[:run_list]
           bootstrap.config[:ssh_user] = config[:ssh_user]
           bootstrap.config[:ssh_port] = config[:ssh_port]
@@ -298,18 +337,15 @@ class Chef
           bootstrap.config[:environment] = config[:environment]
           bootstrap.config[:host_key_verify] = false
           bootstrap.config[:run_list] = config[:run_list]
+          
           bootstrap.run
-
-
-        rescue Exception => e
+        rescue Exception => e 
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
-          # have to use join here to pass a string to highline
           puts "Nested backtrace:"
           ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
-          
           cleanup(vm_ref)
         end
-        # TODO: bootstrap
+
       end
 
     end
