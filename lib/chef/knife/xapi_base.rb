@@ -42,24 +42,25 @@ class Chef::Knife
           require 'readline'  
         end 
 
-        option :host,
+        option :xapi_host,
           :short => "-h SERVER_URL",
           :long => "--host SERVER_URL",
           :description => "The url to the xenserver, http://somehost.local.lan/",
-          :proc => Proc.new { |host| Chef::Config[:knife][:xenserver_host] = host }
+          :proc => Proc.new { |host| Chef::Config[:knife][:xapi_host] = host }
 
-        option :xenserver_password,
+        option :xapi_password,
           :short => "-K PASSWORD",
-          :long => "--xenserver-password PASSWORD",
+          :long => "--xapi-password PASSWORD",
           :description => "Your xenserver password",
-          :proc => Proc.new { |key| Chef::Config[:knife][:xenserver_password] = key }
+          :proc => Proc.new { |key| Chef::Config[:knife][:xapi_password] = key }
 
-        option :xenserver_username,
+        option :xapi_username,
           :short => "-A USERNAME",
-          :long => "--xenserver-username USERNAME",
+          :long => "--xapi-username USERNAME",
           :description => "Your xenserver username",
-          :proc => Proc.new { |username| Chef::Config[:knife][:xenserver_username] = username }      
+          :proc => Proc.new { |username| Chef::Config[:knife][:xapi_username] = username }      
       end
+
     end
 
     # highline setup
@@ -71,11 +72,12 @@ class Chef::Knife
     def xapi
       @xapi ||= begin 
 
-        session = XenApi::Client.new( Chef::Config[:knife][:xenserver_host] )
+        ui.fatal "Must provide a xapi host with --host "unless locate_config_value(:xapi_host)
+        session = XenApi::Client.new(  locate_config_value(:xapi_host) )
         
         # get the password from the user
-        password = Chef::Config[:knife][:xenserver_password] || nil
-        username = Chef::Config[:knife][:xenserver_username] || "root"
+        password =  locate_config_value(:xapi_password) || nil
+        username =  locate_config_value(:xapi_username) || "root"
         if password.nil?  or password.empty?
           password = h.ask("Enter password for user #{username}:  " ) { |input| input.echo = "*" }
         end
@@ -132,7 +134,7 @@ class Chef::Knife
 
       # ensure return values
       if found
-        puts "Using Template: #{h.color(found["name_label"], :cyan)}"
+        ui.msg "Using Template: #{h.color(found["name_label"], :cyan)}"
         return get_template(found["name_label"]) # get the ref to this one
       end
       return nil
@@ -162,7 +164,7 @@ class Chef::Knife
 
     # add a new vif
     def add_vif_by_name(vm_ref, dev_num, net_name)
-      puts "Looking up vif for: #{h.color(net_name, :cyan)}"
+      Chef::Log.debug "Looking up vif for: #{h.color(net_name, :cyan)}"
       network_ref = xapi.network.get_by_name_label(net_name).first
       if network_ref.nil? 
         ui.warn "#{h.color(net_name,:red)} not found, moving on"
@@ -170,7 +172,7 @@ class Chef::Knife
       end
 
       mac = generate_mac
-      puts "Provisioning:  #{h.color(net_name, :cyan)}, #{h.color(mac,:green)}, #{h.color(network_ref, :yellow)}"
+      Chef::Log.debug "Provisioning:  #{h.color(net_name, :cyan)}, #{h.color(mac,:green)}, #{h.color(network_ref, :yellow)}"
 
       vif = { 
         'device'  => dev_num.to_s,

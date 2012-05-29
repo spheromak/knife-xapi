@@ -38,21 +38,23 @@ class Chef
         :short => "-T Template Name Label",
         :long => "--xapi-vm-template",
         :description => "xapi template name to create from. accepts an string or regex",
-        :proc => Proc.new { |template| Chef::Config[:knife][:xapi_vm_template] = template }
+        :proc => Proc.new { |template| Chef::Config[:knife][:vm_template] = template }
 
       option :domain,
         :short => "-f Name",
         :long => "--domain Name",
         :description => "the domain name for the guest",
-        :proc => Proc.new { |domain| Chef::Config[:knife][:xapi_domainname] = domain }
+        :proc => Proc.new { |domain| Chef::Config[:knife][:domain] = domain },
+        :default => "" 
 
       option :install_repo,
         :short => "-R If you're using a builtin template you will need to specify a repo url",
         :long => "--xapi-install-repo",
         :description => "Install repo for this template (if needed)",
-        :proc => Proc.new { |repo| Chef::Config[:knife][:xapi_install_repo] = repo }
+        :proc => Proc.new { |repo| Chef::Config[:knife][:install_repo] = repo },
+        :default => "http://isoredirect.centos.org/centos/6/os/x86_64/"
 
-      option :storage_repo,
+      option :xapi_sr,
         :short => "-S Storage repo to provision VM from",
         :long  => "--xapi-sr",
         :description => "The Xen SR to use, If blank will use pool/hypervisor default",
@@ -62,25 +64,29 @@ class Chef
         :short => "-B Set of kernel boot params to pass to the vm",
         :long => "--xapi-kernel-params",
         :description => "You can add more boot options to the vm e.g.: \"ks='http://foo.local/ks'\"",
-        :proc => Proc.new {|kernel| Chef::Config[:knife][:xapi_kernel_params] = kernel }
+        :proc => Proc.new {|kernel| Chef::Config[:knife][:xapi_kernel_params] = kernel },
+        :default => "graphical utf8" 
 
-      option :disk_size,
+      option :xapi_disk_size,
         :short => "-D Size of disk. 1g 512m etc",
         :long  =>  "--xapi-disk-size",
         :description => "The size of the root disk, use 'm' 'g' 't' if no unit specified assumes g",
-        :proc => Proc.new {|disk| Chef::Config[:knife][:xapi_disk_size] = disk } 
+        :proc => Proc.new {|disk| Chef::Config[:knife][:xapi_disk_size] = disk },
+        :default => "8g"
 
-      option :cpus,
+      option :xapi_cpus,
         :short => "-C Number of VCPUs to provision",
         :long =>  "--xapi-cpus",
         :description => "Number of VCPUS this vm should have 1 4 8 etc",
+        :default => 2,
         :proc => Proc.new {|cpu| Chef::Config[:knife][:xapi_cpus] = cpu }
 
-      option :mem,
+      option :xapi_mem,
         :short => "-M Ammount of memory to provision",
         :long => "--xapi-mem",
         :description => "Ammount of memory the VM should have specify with m g etc 512m, 2g if no unit spcified it assumes gigabytes",
-        :proc => Proc.new {|mem| Chef::Config[:knife][:xapi_mem] = mem } 
+        :proc => Proc.new {|mem| Chef::Config[:knife][:xapi_mem] = mem },
+        :default => "1g"
 
       option :chef_node_name,
         :short => "-N NAME",
@@ -91,7 +97,8 @@ class Chef
         :short => "-S KEY",
         :long => "--ssh-key KEY",
         :description => "The SSH key id",
-        :proc => Proc.new { |key| Chef::Config[:knife][:xapi_ssh_key_id] = key }
+        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_key_name] = key }
+
 
       option :ssh_user,
         :short => "-x USERNAME",
@@ -108,19 +115,19 @@ class Chef
         :short => "-p PORT",
         :long => "--ssh-port PORT",
         :description => "The ssh port",
-        :default => "22",
-        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_port] = key }
+        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_port] = key },
+        :default => "22"
 
       option :bootstrap_version,
         :long => "--bootstrap-version VERSION",
         :description => "The version of Chef to install",
         :proc => Proc.new { |v| Chef::Config[:knife][:bootstrap_version] = v }
 
-      option :distro,
-        :short => "-d DISTRO",
-        :long => "--distro DISTRO",
-        :description => "Bootstrap a distro using a template",
-        :proc => Proc.new { |d| Chef::Config[:knife][:distro] = d },
+      option :bootstrap_template,
+        :short => "-d Template Name",
+        :long => "--bootstrap-template Template Name",
+        :description => "Bootstrap using a specific template",
+        :proc => Proc.new { |d| Chef::Config[:knife][:bootstrap_template] = d },
         :default => "ubuntu10.04-gems"
 
       option :template_file,
@@ -212,41 +219,40 @@ class Chef
         $stdout.sync = true
       
         # get the template vm we are going to build from
-        template_ref = find_template( Chef::Config[:knife][:xapi_vm_template] )
+        template_ref = find_template( locate_config_value(:vm_template) )
 
-        ui.msg "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}" 
+        Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}" 
         vm_ref = xapi.VM.clone(template_ref, server_name)  
 
+        # TODO: lift alot of this
         begin
-          xapi.VM.set_name_description(vm_ref, "VM built by knife-xapi as #{server_name}")
+          xapi.VM.set_name_description(vm_ref, "VM from knife-xapi as #{server_name}")
 
           # configure the install repo
-          repo = Chef::Config[:knife][:xapi_install_repo] || "http://isoredirect.centos.org/centos/5/os/x86_64/"
-          ui.msg "Setting Install Repo: #{h.color(repo,:bold, :cyan)}"
+          repo = locate_config_value(:install_repo)
           xapi.VM.set_other_config(vm_ref, { "install-repository" => repo } )
-    
-          cpus = Chef::Config[:knife][:xapi_cpus].to_s || "2"
+          
+
+          cpus = locate_config_value( :xapi_cpus ).to_s
+
           xapi.VM.set_VCPUs_max( vm_ref, cpus )
           xapi.VM.set_VCPUs_at_startup( vm_ref, cpus )
 
-          memory_size = input_to_bytes( Chef::Config[:knife][:xapi_mem] || "1g" ).to_s
-          ui.msg "Mem size: #{ h.color( memory_size, :cyan)}" 
-
+          memory_size = input_to_bytes( locate_config_value(:xapi_mem) ).to_s
           #  static-min <= dynamic-min = dynamic-max = static-max
           xapi.VM.set_memory_limits(vm_ref, memory_size, memory_size, memory_size, memory_size) 
 
           # 
           # setup the Boot args
           #
-          boot_args = Chef::Config[:knife][:xapi_kernel_params] || "graphical utf8"
-          domainname = Chef::Config[:knife][:xapi_domainname] || ""
+          boot_args = locate_config_value(:kernel_params) 
+          domainname = locate_config_value(:domain)
 
           # if no hostname param set hostname to given vm name
           boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/) 
           # if domainname is supplied we put that in there as well
           boot_args << " domainname=#{domainname}" unless boot_args.match(/domainname=.+\s?/) 
 
-          ui.msg "Setting Boot Args: #{h.color boot_args, :cyan}"
           xapi.VM.set_PV_args( vm_ref, boot_args ) 
 
           # TODO: validate that the vm gets a network here
@@ -259,23 +265,23 @@ class Chef
             end
           end
 
-          sr_ref = find_default_sr
-          if Chef::Config[:knife][:xapi_sr]
-            sr_ref = get_sr_by_name( Chef::Config[:knife][:xapi_sr] ) 
+          if locate_config_value(:xapi_sr)
+            sr_ref = get_sr_by_name( locate_config_value(:xapi_sr) ) 
+          else
+            sr_ref = find_default_sr
           end
 
           if sr_ref.nil?
             ui.error "SR specified not found or can't be used Aborting"
             cleanup(vm_ref)
           end 
-          ui.msg "SR: #{h.color sr_ref, :cyan} created" 
+          Chef::Log.debug "SR: #{h.color sr_ref, :cyan}" 
 
           # Create the VDI
-          disk_size = Chef::Config[:knife][:xapi_disk_size] || "8g" 
-          vdi_ref = create_vdi("#{server_name}-root", sr_ref, disk_size )
+          vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
           # if vdi_ref is nill we need to bail/cleanup
           cleanup(vm_ref) unless vdi_ref
-          ui.msg( "#{ h.color "OK", :green}" )
+          ui.msg( "#{ h.color "OK", :green} ")
 
           # Attach the VDI to the VM
           vbd_ref = create_vbd(vm_ref, vdi_ref, 0)
@@ -283,13 +289,17 @@ class Chef
           ui.msg( "#{ h.color "OK", :green}" )
  
           ui.msg "Provisioning new Guest: #{h.color(vm_ref, :bold, :cyan )}" 
+          ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"
+          ui.msg "Install Repo: #{ h.color(repo,:bold, :cyan)}"
+          ui.msg "Memory: #{ h.color( locate_config_value(:xapi_mem).to_s, :bold, :cyan)}" 
+          ui.msg "CPUs:   #{ h.color( locate_config_value(:xapi_cpus).to_s, :bold, :cyan)}"
+          ui.msg "Disk:   #{ h.color( locate_config_value(:xapi_disk_size).to_s, :bold, :cyan)}"
           provisioned = xapi.VM.provision(vm_ref)
 
           ui.msg "Starting new Guest #{h.color( provisioned, :cyan)} "
-          
           task = xapi.Async.VM.start(vm_ref, false, true)
           wait_on_task(task) 
-          ui.msg( "#{ h.color "Done!", :green}" )
+          ui.msg( "#{ h.color "OK!", :green}" )
 
           exit 0 unless locate_config_value(:run_list)       
         rescue Exception => e
@@ -312,7 +322,7 @@ class Chef
           timeout(480) do
             print(".") until tcp_test_ssh(guest_addr) {
               sleep @initial_sleep_delay ||=  10
-              puts("done")
+              ui.msg( "#{ h.color "OK!", :green}" )
             }
           end
         rescue Timeout::Error
@@ -321,8 +331,12 @@ class Chef
         end
 
 
-        begin 
-          server_name << ".#{domainname}" unless domainname.empty?
+       # begin 
+          if domainname.empty?
+            server = server_name
+          else 
+            server = "#{server_name}.#{domainname}"
+          end
           bootstrap = Chef::Knife::Bootstrap.new
           bootstrap.name_args = [ guest_addr ]
           bootstrap.config[:run_list] = config[:run_list]
@@ -330,9 +344,9 @@ class Chef
           bootstrap.config[:ssh_port] = config[:ssh_port]
           bootstrap.config[:ssh_password] = config[:ssh_password]
           bootstrap.config[:identity_file] = config[:identity_file]
-          bootstrap.config[:chef_node_name] = config[:chef_node_name] || server_name
+          bootstrap.config[:chef_node_name] = config[:chef_node_name] || server
           bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
-          bootstrap.config[:distro] = locate_config_value(:distro)
+          bootstrap.config[:distro] = locate_config_value(:bootstrap_template)
           bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
           bootstrap.config[:template_file] = locate_config_value(:template_file)
           bootstrap.config[:environment] = config[:environment]
@@ -340,12 +354,12 @@ class Chef
           bootstrap.config[:run_list] = config[:run_list]
           
           bootstrap.run
-        rescue Exception => e 
-          ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
-          puts "Nested backtrace:"
-          ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
-          cleanup(vm_ref)
-        end
+       # rescue Exception => e 
+       #   ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
+       #   puts "Nested backtrace:"
+       #   ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
+       #   cleanup(vm_ref)
+       # end
 
       end
 
