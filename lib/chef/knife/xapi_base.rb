@@ -77,7 +77,7 @@ class Chef::Knife
         password = Chef::Config[:knife][:xenserver_password] || nil
         username = Chef::Config[:knife][:xenserver_username] || "root"
         if password.nil?  or password.empty?
-          password = ask("Enter password for user #{username}:  " ) { |input| input.echo = "*" }
+          password = h.ask("Enter password for user #{username}:  " ) { |input| input.echo = "*" }
         end
         session.login_with_password(username, password) 
 
