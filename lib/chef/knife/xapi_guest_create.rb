@@ -322,6 +322,7 @@ class Chef
 
 
         begin 
+          server_name << ".#{domainname}" unless domainname.empty?
           bootstrap = Chef::Knife::Bootstrap.new
           bootstrap.name_args = [ guest_addr ]
           bootstrap.config[:run_list] = config[:run_list]
