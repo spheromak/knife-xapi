@@ -64,7 +64,7 @@ class Chef
         :short => "-B Set of kernel boot params to pass to the vm",
         :long => "--xapi-kernel-params",
         :description => "You can add more boot options to the vm e.g.: \"ks='http://foo.local/ks'\"",
-        :proc => Proc.new {|kernel| Chef::Config[:knife][:xapi_kernel_params] = kernel },
+        :proc => Proc.new {|kernel| Chef::Config[:knife][:kernel_params] = kernel },
         :default => "graphical utf8" 
 
       option :xapi_disk_size,

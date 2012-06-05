@@ -17,7 +17,7 @@ Config options are extendable in the knife.rb the folowing config options can be
 * __knife[:xapi_disk_size]__ Default VM disk size (8g if not specified)
 * __knife[:xapi_cpus]__ The Default CPUs to provision for guests (2 if not specified)
 * __knife[:xapi_mem]__  The Defaul ammount of Memory  for guests (1g if not specified)
-* __knife[:xapi_kernel_params]__ Optional Boot paramaters to pass to the guest 
+* __knife[:kernel_params]__ Optional Boot paramaters to pass to the guest 
 
 ### These options Controll xapi guest create bootstrap
 * __knife[:run_list]__  Bootstrap Run list comma sepparated. 
@@ -98,7 +98,7 @@ List shows the vm's on the pool/host Ignoring Controll domains and templates. VM
     -R If you're using a builtin template you will need to specify a repo url,
         --xapi-install-repo          Install repo for this template (if needed)
     -B Set of kernel boot params to pass to the vm,
-        --xapi-kernel-params         You can add more boot options to the vm e.g.: "ks='http://foo.local/ks'"
+        --kernel-params         You can add more boot options to the vm e.g.: "ks='http://foo.local/ks'"
     -u, --user USER                  API Client Username
         --print-after                Show the data after a destructive operation
     -r, --run-list RUN_LIST          Comma separated list of roles/recipes to apply
