@@ -37,55 +37,47 @@ class Chef
       option :vm_template,
         :short => "-T Template Name Label",
         :long => "--xapi-vm-template",
-        :description => "xapi template name to create from. accepts an string or regex",
-        :proc => Proc.new { |template| Chef::Config[:knife][:vm_template] = template }
+        :description => "xapi template name to create from. accepts an string or regex"
 
       option :domain,
         :short => "-f Name",
         :long => "--domain Name",
         :description => "the domain name for the guest",
-        :proc => Proc.new { |domain| Chef::Config[:knife][:domain] = domain },
         :default => "" 
 
       option :install_repo,
         :short => "-R If you're using a builtin template you will need to specify a repo url",
         :long => "--xapi-install-repo",
         :description => "Install repo for this template (if needed)",
-        :proc => Proc.new { |repo| Chef::Config[:knife][:install_repo] = repo },
         :default => "http://isoredirect.centos.org/centos/6/os/x86_64/"
 
       option :xapi_sr,
         :short => "-S Storage repo to provision VM from",
         :long  => "--xapi-sr",
-        :description => "The Xen SR to use, If blank will use pool/hypervisor default",
-        :proc => Proc.new { |sr| Chef::Config[:knife][:xapi_sr] = sr }
+        :description => "The Xen SR to use, If blank will use pool/hypervisor default"
 
       option :kernel_params,
         :short => "-B Set of kernel boot params to pass to the vm",
         :long => "--xapi-kernel-params",
         :description => "You can add more boot options to the vm e.g.: \"ks='http://foo.local/ks'\"",
-        :proc => Proc.new {|kernel| Chef::Config[:knife][:kernel_params] = kernel },
         :default => "graphical utf8" 
 
       option :xapi_disk_size,
         :short => "-D Size of disk. 1g 512m etc",
         :long  =>  "--xapi-disk-size",
         :description => "The size of the root disk, use 'm' 'g' 't' if no unit specified assumes g",
-        :proc => Proc.new {|disk| Chef::Config[:knife][:xapi_disk_size] = disk },
         :default => "8g"
 
       option :xapi_cpus,
         :short => "-C Number of VCPUs to provision",
         :long =>  "--xapi-cpus",
         :description => "Number of VCPUS this vm should have 1 4 8 etc",
-        :default => 2,
-        :proc => Proc.new {|cpu| Chef::Config[:knife][:xapi_cpus] = cpu }
+        :default => 2
 
       option :xapi_mem,
         :short => "-M Ammount of memory to provision",
         :long => "--xapi-mem",
         :description => "Ammount of memory the VM should have specify with m g etc 512m, 2g if no unit spcified it assumes gigabytes",
-        :proc => Proc.new {|mem| Chef::Config[:knife][:xapi_mem] = mem },
         :default => "1g"
 
       option :chef_node_name,
@@ -96,9 +88,7 @@ class Chef
       option :ssh_key_name,
         :short => "-S KEY",
         :long => "--ssh-key KEY",
-        :description => "The SSH key id",
-        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_key_name] = key }
-
+        :description => "The SSH key id"
 
       option :ssh_user,
         :short => "-x USERNAME",
@@ -115,28 +105,31 @@ class Chef
         :short => "-p PORT",
         :long => "--ssh-port PORT",
         :description => "The ssh port",
-        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_port] = key },
         :default => "22"
 
       option :bootstrap_version,
         :long => "--bootstrap-version VERSION",
-        :description => "The version of Chef to install",
-        :proc => Proc.new { |v| Chef::Config[:knife][:bootstrap_version] = v }
+        :description => "The version of Chef to install"
 
       option :bootstrap_template,
         :short => "-d Template Name",
         :long => "--bootstrap-template Template Name",
         :description => "Bootstrap using a specific template",
-        :proc => Proc.new { |d| Chef::Config[:knife][:bootstrap_template] = d },
         :default => "ubuntu10.04-gems"
 
       option :template_file,
         :short => "-F FILEPATH",
         :long => "--template-file TEMPLATE",
         :description => "Full path to location of template to use",
-        :proc => Proc.new { |t| Chef::Config[:knife][:template_file] = t },
         :default => false
-     
+    
+      option :json_attributes,
+        :short => "-j JSON_ATTRIBS",
+        :long => "--json-attributes",
+        :description => "A JSON string to be added to the first run of chef-client",
+        :proc => lambda { |o| JSON.parse(o) },
+        :default => {}
+
       option :run_list,
         :short => "-r RUN_LIST",
         :long => "--run-list RUN_LIST",
@@ -311,6 +304,10 @@ class Chef
           cleanup(vm_ref)
         end
 
+        if locate_config_value(:run_list).empty? or ! locate_config_value(:template_file)
+          exit 0 
+        end
+
         guest_addr = get_guest_ip(vm_ref)
         if guest_addr.nil? or guest_addr.empty?
           ui.msg("ip seems wrong using host+domain name instead")
@@ -331,7 +328,7 @@ class Chef
         end
 
 
-       # begin 
+        begin 
           if domainname.empty?
             server = server_name
           else 
@@ -346,6 +343,7 @@ class Chef
           bootstrap.config[:identity_file] = config[:identity_file]
           bootstrap.config[:chef_node_name] = config[:chef_node_name] || server
           bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
+          bootstrap.config[:first_boot_attributes] = locate_config_value(:json_attributes)
           bootstrap.config[:distro] = locate_config_value(:bootstrap_template)
           bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
           bootstrap.config[:template_file] = locate_config_value(:template_file)
@@ -354,12 +352,12 @@ class Chef
           bootstrap.config[:run_list] = config[:run_list]
           
           bootstrap.run
-       # rescue Exception => e 
-       #   ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
-       #   puts "Nested backtrace:"
-       #   ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
-       #   cleanup(vm_ref)
-       # end
+        rescue Exception => e 
+          ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
+          puts "Nested backtrace:"
+          ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
+          cleanup(vm_ref)
+        end
 
       end
 

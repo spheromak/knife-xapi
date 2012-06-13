@@ -45,20 +45,17 @@ class Chef::Knife
         option :xapi_host,
           :short => "-h SERVER_URL",
           :long => "--host SERVER_URL",
-          :description => "The url to the xenserver, http://somehost.local.lan/",
-          :proc => Proc.new { |host| Chef::Config[:knife][:xapi_host] = host }
+          :description => "The url to the xenserver, http://somehost.local.lan/"
 
         option :xapi_password,
           :short => "-K PASSWORD",
           :long => "--xapi-password PASSWORD",
-          :description => "Your xenserver password",
-          :proc => Proc.new { |key| Chef::Config[:knife][:xapi_password] = key }
+          :description => "Your xenserver password"
 
         option :xapi_username,
           :short => "-A USERNAME",
           :long => "--xapi-username USERNAME",
-          :description => "Your xenserver username",
-          :proc => Proc.new { |username| Chef::Config[:knife][:xapi_username] = username }      
+          :description => "Your xenserver username"
       end
 
     end
