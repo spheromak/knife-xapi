@@ -35,7 +35,7 @@ class Chef
 
       def run 
         server_name = @name_args[0]
-        $stdout.sync = true
+
         vms = [] 
         if config[:uuid]
           vms << xapi.VM.get_by_uuid(server_name)

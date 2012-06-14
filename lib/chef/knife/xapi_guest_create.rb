@@ -43,12 +43,6 @@ class Chef
         :proc => Proc.new { |key| Chef::Config[:knife][:xapi_vm_template] = key },
         :description => "xapi template name to create from. accepts an string or regex"
 
-      option :domain,
-        :short => "-f Name",
-        :long => "--domain Name",
-        :description => "the domain name for the guest",
-        :proc => Proc.new { |key| Chef::Config[:knife][:domain] = key }
-
       option :install_repo,
         :short => "-R If you're using a builtin template you will need to specify a repo url",
         :long => "--install-repo",
@@ -211,13 +205,18 @@ class Chef
 
       def run 
         server_name = @name_args[0]
-        $stdout.sync = true
+        domainname = locate_config_value(:domain)
+        if domainname.empty?
+          fqdn = server_name
+        else 
+          fqdn = "#{server_name}.#{domainname}"
+        end
       
         # get the template vm we are going to build from
         template_ref = find_template( locate_config_value(:xapi_vm_template) )
 
         Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}" 
-        vm_ref = xapi.VM.clone(template_ref, server_name)  
+        vm_ref = xapi.VM.clone(template_ref, fqdn)  
 
         # TODO: lift alot of this
         begin
@@ -241,7 +240,6 @@ class Chef
           # setup the Boot args
           #
           boot_args = locate_config_value(:kernel_params) 
-          domainname = locate_config_value(:domain)
 
           # if no hostname param set hostname to given vm name
           boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/) 
@@ -283,7 +281,7 @@ class Chef
           cleanup(vm_ref) unless vbd_ref 
           ui.msg( "#{ h.color "OK", :green}" )
  
-          ui.msg "Provisioning new Guest: #{h.color(vm_ref, :bold, :cyan )}" 
+          ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}" 
           ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"
           ui.msg "Install Repo: #{ h.color(repo,:bold, :cyan)}"
           ui.msg "Memory: #{ h.color( locate_config_value(:xapi_mem).to_s, :bold, :cyan)}" 
@@ -329,13 +327,8 @@ class Chef
           cleanup(vm_ref)
         end
 
-
+        
         begin 
-          if domainname.empty?
-            server = server_name
-          else 
-            server = "#{server_name}.#{domainname}"
-          end
           bootstrap = Chef::Knife::Bootstrap.new
           bootstrap.name_args = [ guest_addr ]
           bootstrap.config[:run_list] = locate_config_value(:run_list)
@@ -343,7 +336,7 @@ class Chef
           bootstrap.config[:ssh_port] = locate_config_value(:ssh_port)
           bootstrap.config[:ssh_password] = locate_config_value(:ssh_password)
           bootstrap.config[:identity_file] = locate_config_value(:identity_file)
-          bootstrap.config[:chef_node_name] = config[:chef_node_name] || server
+          bootstrap.config[:chef_node_name] = config[:chef_node_name] || fqdn
           bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
           bootstrap.config[:first_boot_attributes] = locate_config_value(:json_attributes)
           bootstrap.config[:distro] = locate_config_value(:bootstrap_template)

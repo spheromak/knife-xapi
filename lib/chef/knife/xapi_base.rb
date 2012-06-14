@@ -60,7 +60,6 @@ class Chef::Knife
           require 'readline'  
         end 
 
-
         option :xapi_host,
           :short => "-h SERVER_URL",
           :long => "--host SERVER_URL",
@@ -78,6 +77,13 @@ class Chef::Knife
           :long => "--xapi-username USERNAME",
           :proc => Proc.new { |key| Chef::Config[:knife][:xapi_username] = key },
           :description => "Your xenserver username"
+      
+        option :domain,
+          :short => "-f Name",
+          :long => "--domain Name",
+          :description => "the domain name for the guest",
+          :proc => Proc.new { |key| Chef::Config[:knife][:domain] = key }
+
       end
 
     end
