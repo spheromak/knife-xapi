@@ -165,7 +165,7 @@ class Chef
         tcp_socket && tcp_socket.close
       end
 
-      def get_guest_ip(vm_ref)
+      def wait_for_guest_ip(vm_ref)
         begin
           timeout(480) do
             ui.msg "Waiting for guest ip address" 
@@ -308,7 +308,7 @@ class Chef
           exit 0 
         end
 
-        guest_addr = get_guest_ip(vm_ref)
+        guest_addr = wait_for_guest_ip(vm_ref)
         if guest_addr.nil? or guest_addr.empty?
           ui.msg("ip seems wrong using host+domain name instead")
           guest_addr = "#{host_name}.#{domainname}"

@@ -27,15 +27,31 @@ class Chef
 
       banner "knife xapi guest list"
 
+       option :id,
+         :short => "-i",
+         :long => "--show-id",
+         :description => "Enable printing of UUID and OpaqueRefs for vm"
+
+
       def run
         vms = xapi.VM.get_all
-        printf "%-25s  %-12s  %-46s  %-36s \n", "Name Label", "State", "Ref", "UUID"
+        if locate_config_value(:id)
+           printf "%-25s  %-12s %-16s %-46s  %-36s \n", "Name Label", "State",  "IP Address", "Ref", "UUID"
+        else 
+           printf "%-25s  %-12s %-16s\n", "Name Label", "State", "IP Address"
+        end
+
         vms.each do |vm|
           record = xapi.VM.get_record(vm)
+          ip_address = get_guest_ip(vm)
           # make  sure you can't do bad things to these VM's
           next if record['is_a_template'] 
           next if record['name_label'] =~ /control domain/i
-          printf "%-25s  %-12s  %46s  %36s \n", record['name_label'], record['power_state'], vm, record['uuid']
+          if locate_config_value(:id)
+            printf "%-25s  %-12s %-16s %46s  %36s \n", record['name_label'], record['power_state'], ip_address, vm, record['uuid']
+          else 
+            printf "%-25s  %-12s %-16s\n", record['name_label'], record['power_state'], ip_address
+          end
         end
       end
 

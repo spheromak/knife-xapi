@@ -295,5 +295,18 @@ class Chef::Knife
       vbd_ref = get_task_ref(task) 
     end
 
+    # try to get a guest ip and return it
+    def get_guest_ip(vm_ref)
+      guest_ip = "unknown"
+      vgm =  xapi.VM.get_guest_metrics(vm_ref)
+      unless "OpaqueRef:NULL" == vgm
+        networks = xapi.VM_guest_metrics.get_networks(vgm)
+        if networks.has_key?("0/ip")
+          guest_ip = networks["0/ip"]
+        end
+      end
+      return guest_ip
+    end 
+
   end
 end
