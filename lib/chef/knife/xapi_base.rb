@@ -26,12 +26,30 @@ unless defined?(XAPI_TEMP_REGEX)
   XAPI_TEMP_REGEX = /^CentOS 5.*\(64-bit\)/
 end
 
+unless defined?(XAPI_DEFAULTS)
+  XAPI_DEFAULTS = {
+    :domain => "",
+    :ssh_user => "root",
+    :ssh_port => "22",
+    :install_repo =>  "http://isoredirect.centos.org/centos/6/os/x86_64/",
+    :xapi_disk_size => "graphical utf8",
+    :xapi_disk_size => "8g",
+    :xapi_cpus => "1g",
+    :xapi_mem => "1g",
+    :bootstrap_template => "ubuntu10.04-gems",
+    :template_file => false,
+    :run_list => [],
+    :json_attributes => {}
+  }
+end
+
 require 'chef/knife'
 require 'units/standard'
 require 'xenapi'
 
 class Chef::Knife
     module XapiBase
+
 
     def self.included(includer)
       includer.class_eval do
@@ -42,19 +60,23 @@ class Chef::Knife
           require 'readline'  
         end 
 
+
         option :xapi_host,
           :short => "-h SERVER_URL",
           :long => "--host SERVER_URL",
+          :proc => Proc.new { |key| Chef::Config[:knife][:xapi_host] = key },
           :description => "The url to the xenserver, http://somehost.local.lan/"
 
         option :xapi_password,
           :short => "-K PASSWORD",
           :long => "--xapi-password PASSWORD",
+          :proc => Proc.new { |key| Chef::Config[:knife][:xapi_password] = key },
           :description => "Your xenserver password"
 
         option :xapi_username,
           :short => "-A USERNAME",
           :long => "--xapi-username USERNAME",
+          :proc => Proc.new { |key| Chef::Config[:knife][:xapi_username] = key },
           :description => "Your xenserver username"
       end
 
@@ -86,7 +108,7 @@ class Chef::Knife
 
     def locate_config_value(key)
       key = key.to_sym
-      config[key] || Chef::Config[:knife][key] 
+      config[key] || Chef::Config[:knife][key]  || XAPI_DEFAULTS[key] 
     end
 
     # get template by name_label

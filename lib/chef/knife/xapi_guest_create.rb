@@ -25,6 +25,7 @@ class Chef
   class Knife
     class XapiGuestCreate < Knife
       include Chef::Knife::XapiBase
+
       require 'timeout'
 
       deps do
@@ -32,53 +33,57 @@ class Chef
         Chef::Knife::Bootstrap.load_deps
       end
 
+
+
       banner "knife xapi guest create NAME [NETWORKS] (options)"
 
-      option :vm_template,
+      option :xapi_vm_template,
         :short => "-T Template Name Label",
         :long => "--xapi-vm-template",
+        :proc => Proc.new { |key| Chef::Config[:knife][:xapi_vm_template] = key },
         :description => "xapi template name to create from. accepts an string or regex"
 
       option :domain,
         :short => "-f Name",
         :long => "--domain Name",
         :description => "the domain name for the guest",
-        :default => "" 
+        :proc => Proc.new { |key| Chef::Config[:knife][:domain] = key }
 
       option :install_repo,
         :short => "-R If you're using a builtin template you will need to specify a repo url",
-        :long => "--xapi-install-repo",
+        :long => "--install-repo",
         :description => "Install repo for this template (if needed)",
-        :default => "http://isoredirect.centos.org/centos/6/os/x86_64/"
+        :proc => Proc.new { |key| Chef::Config[:knife][:install_repo] = key }
 
       option :xapi_sr,
         :short => "-S Storage repo to provision VM from",
         :long  => "--xapi-sr",
+        :proc => Proc.new { |key| Chef::Config[:knife][:xapi_sr] = key },
         :description => "The Xen SR to use, If blank will use pool/hypervisor default"
 
       option :kernel_params,
         :short => "-B Set of kernel boot params to pass to the vm",
-        :long => "--xapi-kernel-params",
+        :long => "--kernel-params",
         :description => "You can add more boot options to the vm e.g.: \"ks='http://foo.local/ks'\"",
-        :default => "graphical utf8" 
+        :proc => Proc.new { |key| Chef::Config[:knife][:kernel_params] = key }
 
       option :xapi_disk_size,
         :short => "-D Size of disk. 1g 512m etc",
         :long  =>  "--xapi-disk-size",
         :description => "The size of the root disk, use 'm' 'g' 't' if no unit specified assumes g",
-        :default => "8g"
+        :proc => Proc.new { |key| Chef::Config[:knife][:xapi_disk_size] = key.to_s }
 
       option :xapi_cpus,
         :short => "-C Number of VCPUs to provision",
         :long =>  "--xapi-cpus",
         :description => "Number of VCPUS this vm should have 1 4 8 etc",
-        :default => 2
+        :proc => Proc.new { |key| Chef::Config[:knife][:xapi_cpus] = key.to_s }
 
       option :xapi_mem,
         :short => "-M Ammount of memory to provision",
         :long => "--xapi-mem",
         :description => "Ammount of memory the VM should have specify with m g etc 512m, 2g if no unit spcified it assumes gigabytes",
-        :default => "1g"
+        :proc => Proc.new { |key| Chef::Config[:knife][:xapi_mem] = key.to_s }
 
       option :chef_node_name,
         :short => "-N NAME",
@@ -88,24 +93,25 @@ class Chef
       option :ssh_key_name,
         :short => "-S KEY",
         :long => "--ssh-key KEY",
+        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_key_name] = key },
         :description => "The SSH key id"
 
       option :ssh_user,
         :short => "-x USERNAME",
         :long => "--ssh-user USERNAME",
         :description => "The ssh username",
-        :default => "root"
+        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_user] = key }
 
       option :ssh_password,
         :short => "-P PASSWORD",
         :long => "--ssh-password PASSWORD",
+        :proc => Proc.new { |key| Chef::Config[:knife][:ssh_password] = key },
         :description => "The ssh password"
 
       option :ssh_port,
         :short => "-p PORT",
         :long => "--ssh-port PORT",
-        :description => "The ssh port",
-        :default => "22"
+        :description => "The ssh port"
 
       option :bootstrap_version,
         :long => "--bootstrap-version VERSION",
@@ -114,31 +120,27 @@ class Chef
       option :bootstrap_template,
         :short => "-d Template Name",
         :long => "--bootstrap-template Template Name",
-        :description => "Bootstrap using a specific template",
-        :default => "ubuntu10.04-gems"
+        :description => "Bootstrap using a specific template"
 
       option :template_file,
         :short => "-F FILEPATH",
         :long => "--template-file TEMPLATE",
-        :description => "Full path to location of template to use",
-        :default => false
-    
+        :description => "Full path to location of template to use"
+   
       option :json_attributes,
         :short => "-j JSON_ATTRIBS",
         :long => "--json-attributes",
         :description => "A JSON string to be added to the first run of chef-client",
-        :proc => lambda { |o| JSON.parse(o) },
-        :default => {}
+        :proc => lambda { |o| JSON.parse(o) }
 
       option :run_list,
         :short => "-r RUN_LIST",
         :long => "--run-list RUN_LIST",
         :description => "Comma separated list of roles/recipes to apply",
-        :proc => lambda { |o| o.split(/[\s,]+/) },
-        :default => [] 
+        :proc => lambda { |o| o.split(/[\s,]+/) }
 
       def tcp_test_ssh(hostname)
-        tcp_socket = TCPSocket.new(hostname, config[:ssh_port])
+        tcp_socket = TCPSocket.new(hostname, locate_config_value(:ssh_port) )
         readable = IO.select([tcp_socket], nil, nil, 5)
         if readable
           Chef::Log.debug("sshd accepting connections on #{hostname}, banner is #{tcp_socket.gets}")
@@ -212,7 +214,7 @@ class Chef
         $stdout.sync = true
       
         # get the template vm we are going to build from
-        template_ref = find_template( locate_config_value(:vm_template) )
+        template_ref = find_template( locate_config_value(:xapi_vm_template) )
 
         Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}" 
         vm_ref = xapi.VM.clone(template_ref, server_name)  
@@ -336,20 +338,20 @@ class Chef
           end
           bootstrap = Chef::Knife::Bootstrap.new
           bootstrap.name_args = [ guest_addr ]
-          bootstrap.config[:run_list] = config[:run_list]
-          bootstrap.config[:ssh_user] = config[:ssh_user]
-          bootstrap.config[:ssh_port] = config[:ssh_port]
-          bootstrap.config[:ssh_password] = config[:ssh_password]
-          bootstrap.config[:identity_file] = config[:identity_file]
+          bootstrap.config[:run_list] = locate_config_value(:run_list)
+          bootstrap.config[:ssh_user] = locate_config_value(:ssh_user)
+          bootstrap.config[:ssh_port] = locate_config_value(:ssh_port)
+          bootstrap.config[:ssh_password] = locate_config_value(:ssh_password)
+          bootstrap.config[:identity_file] = locate_config_value(:identity_file)
           bootstrap.config[:chef_node_name] = config[:chef_node_name] || server
           bootstrap.config[:bootstrap_version] = locate_config_value(:bootstrap_version)
           bootstrap.config[:first_boot_attributes] = locate_config_value(:json_attributes)
           bootstrap.config[:distro] = locate_config_value(:bootstrap_template)
-          bootstrap.config[:use_sudo] = true unless config[:ssh_user] == 'root'
+          bootstrap.config[:use_sudo] = true unless locate_config_value(:ssh_user) == 'root'
           bootstrap.config[:template_file] = locate_config_value(:template_file)
           bootstrap.config[:environment] = config[:environment]
           bootstrap.config[:host_key_verify] = false
-          bootstrap.config[:run_list] = config[:run_list]
+          bootstrap.config[:run_list] = locate_config_value(:run_list)
           
           bootstrap.run
         rescue Exception => e 
