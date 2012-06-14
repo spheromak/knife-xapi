@@ -86,7 +86,7 @@ class Chef::Knife
 
     def locate_config_value(key)
       key = key.to_sym
-      Chef::Config[:knife][key] || config[key]
+      config[key] || Chef::Config[:knife][key] 
     end
 
     # get template by name_label
