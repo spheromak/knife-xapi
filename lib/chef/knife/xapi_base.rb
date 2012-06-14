@@ -164,7 +164,11 @@ class Chef::Knife
       Chef::Log.debug "Looking up vif for: #{h.color(net_name, :cyan)}"
       network_ref = xapi.network.get_by_name_label(net_name).first
       if network_ref.nil? 
-        ui.warn "#{h.color(net_name,:red)} not found, moving on"
+        if net_name =~ /Network (\d)+$/  # special handing for 'Network X' As displayed by XenCenter   
+          add_vif_by_name(vm_ref, dev_num, "Pool-wide network associated with eth#{$1}")
+        else
+          ui.warn "#{h.color(net_name,:red)} not found, moving on"
+        end
         return 
       end
 
