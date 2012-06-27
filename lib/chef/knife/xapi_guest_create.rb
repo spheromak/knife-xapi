@@ -24,9 +24,24 @@ require 'chef/knife/xapi_base'
 class Chef
   class Knife
     class XapiGuestCreate < Knife
+      require 'timeout'
       include Chef::Knife::XapiBase
 
-      require 'timeout'
+      @defaults ||= Hash.new
+      @defaults.merge!({
+        :domain => "",
+        :ssh_user => "root",
+        :ssh_port => "22",
+        :install_repo =>  "http://isoredirect.centos.org/centos/6/os/x86_64/",
+        :xapi_disk_size => "graphical utf8",
+        :xapi_disk_size => "8g",
+        :xapi_cpus => "1g",
+        :xapi_mem => "1g",
+        :bootstrap_template => "ubuntu10.04-gems",
+        :template_file => false,
+        :run_list => [],
+        :json_attributes => {}
+      })
 
       deps do
         require 'chef/knife/bootstrap'

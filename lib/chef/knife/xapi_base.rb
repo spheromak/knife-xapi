@@ -26,28 +26,12 @@ unless defined?(XAPI_TEMP_REGEX)
   XAPI_TEMP_REGEX = /^CentOS 5.*\(64-bit\)/
 end
 
-unless defined?(XAPI_DEFAULTS)
-  XAPI_DEFAULTS = {
-    :domain => "",
-    :ssh_user => "root",
-    :ssh_port => "22",
-    :install_repo =>  "http://isoredirect.centos.org/centos/6/os/x86_64/",
-    :xapi_disk_size => "graphical utf8",
-    :xapi_disk_size => "8g",
-    :xapi_cpus => "1g",
-    :xapi_mem => "1g",
-    :bootstrap_template => "ubuntu10.04-gems",
-    :template_file => false,
-    :run_list => [],
-    :json_attributes => {}
-  }
-end
-
 require 'chef/knife'
 require 'units/standard'
 require 'xenapi'
 
 class Chef::Knife
+    @defaults = Hash.new
     module XapiBase
 
 
@@ -114,7 +98,7 @@ class Chef::Knife
 
     def locate_config_value(key)
       key = key.to_sym
-      config[key] || Chef::Config[:knife][key]  || XAPI_DEFAULTS[key] 
+      config[key] || Chef::Config[:knife][key]  || @defaults[key]
     end
 
     # get template by name_label
