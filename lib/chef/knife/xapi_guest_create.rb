@@ -8,9 +8,9 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,15 +27,14 @@ class Chef
       require 'timeout'
       include Chef::Knife::XapiBase
 
-      @defaults ||= Hash.new
-      @defaults.merge!({
+      Chef::Knife::XapiBase.set_defaults( {
         :domain => "",
         :ssh_user => "root",
         :ssh_port => "22",
         :install_repo =>  "http://isoredirect.centos.org/centos/6/os/x86_64/",
-        :xapi_disk_size => "graphical utf8",
+        :kernel_params => "graphical utf8",
         :xapi_disk_size => "8g",
-        :xapi_cpus => "1g",
+        :xapi_cpus => "1",
         :xapi_mem => "1g",
         :bootstrap_template => "ubuntu10.04-gems",
         :template_file => false,
@@ -47,8 +46,6 @@ class Chef
         require 'chef/knife/bootstrap'
         Chef::Knife::Bootstrap.load_deps
       end
-
-
 
       banner "knife xapi guest create NAME [NETWORKS] (options)"
 
@@ -135,7 +132,7 @@ class Chef
         :short => "-F FILEPATH",
         :long => "--template-file TEMPLATE",
         :description => "Full path to location of template to use"
-   
+
       option :json_attributes,
         :short => "-j JSON_ATTRIBS",
         :long => "--json-attributes",
@@ -179,10 +176,10 @@ class Chef
       def wait_for_guest_ip(vm_ref)
         begin
           timeout(480) do
-            ui.msg "Waiting for guest ip address" 
+            ui.msg "Waiting for guest ip address"
             guest_ip = ""
             while guest_ip.empty?
-              print(".") 
+              print(".")
               sleep  @initial_sleep_delay ||=  10
               vgm =  xapi.VM.get_guest_metrics(vm_ref)
               next if "OpaqueRef:NULL" == vgm
@@ -191,9 +188,9 @@ class Chef
                 guest_ip = networks["0/ip"]
               end
             end
-            puts "\n" 
+            puts "\n"
             return guest_ip
-          end 
+          end
         rescue Timeout::Error
           ui.msg "Timeout waiting for XAPI to report IP address "
         end
@@ -214,24 +211,24 @@ class Chef
         task = xapi.Async.VM.destroy(vm_ref)
         wait_on_task(task)
         print " #{h.color "Done", :green} \n"
-        exit 1 
+        exit 1
       end
 
 
-      def run 
+      def run
         server_name = @name_args[0]
         domainname = locate_config_value(:domain)
         if domainname.empty?
           fqdn = server_name
-        else 
+        else
           fqdn = "#{server_name}.#{domainname}"
         end
-      
+
         # get the template vm we are going to build from
         template_ref = find_template( locate_config_value(:xapi_vm_template) )
 
-        Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}" 
-        vm_ref = xapi.VM.clone(template_ref, fqdn)  
+        Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}"
+        vm_ref = xapi.VM.clone(template_ref, fqdn)
 
         # TODO: lift alot of this
         begin
@@ -240,7 +237,7 @@ class Chef
           # configure the install repo
           repo = locate_config_value(:install_repo)
           xapi.VM.set_other_config(vm_ref, { "install-repository" => repo } )
-          
+
 
           cpus = locate_config_value( :xapi_cpus ).to_s
 
@@ -249,32 +246,32 @@ class Chef
 
           memory_size = input_to_bytes( locate_config_value(:xapi_mem) ).to_s
           #  static-min <= dynamic-min = dynamic-max = static-max
-          xapi.VM.set_memory_limits(vm_ref, memory_size, memory_size, memory_size, memory_size) 
+          xapi.VM.set_memory_limits(vm_ref, memory_size, memory_size, memory_size, memory_size)
 
-          # 
+          #
           # setup the Boot args
           #
-          boot_args = locate_config_value(:kernel_params) 
+          boot_args = locate_config_value(:kernel_params)
 
           # if no hostname param set hostname to given vm name
-          boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/) 
+          boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/)
           # if domainname is supplied we put that in there as well
-          boot_args << " domainname=#{domainname}" unless boot_args.match(/domainname=.+\s?/) 
+          boot_args << " domainname=#{domainname}" unless boot_args.match(/domainname=.+\s?/)
 
-          xapi.VM.set_PV_args( vm_ref, boot_args ) 
+          xapi.VM.set_PV_args( vm_ref, boot_args )
 
           # TODO: validate that the vm gets a network here
           networks = @name_args[1..-1]
           # if the user has provided networks
-          if networks.length >= 1  
+          if networks.length >= 1
             clear_vm_vifs( xapi.VM.get_record( vm_ref ) )
-            networks.each_with_index do |net, index| 
+            networks.each_with_index do |net, index|
               add_vif_by_name(vm_ref, index, net)
             end
           end
 
           if locate_config_value(:xapi_sr)
-            sr_ref = get_sr_by_name( locate_config_value(:xapi_sr) ) 
+            sr_ref = get_sr_by_name( locate_config_value(:xapi_sr) )
           else
             sr_ref = find_default_sr
           end
@@ -282,8 +279,8 @@ class Chef
           if sr_ref.nil?
             ui.error "SR specified not found or can't be used Aborting"
             cleanup(vm_ref)
-          end 
-          Chef::Log.debug "SR: #{h.color sr_ref, :cyan}" 
+          end
+          Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
 
           # Create the VDI
           vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
@@ -293,34 +290,34 @@ class Chef
 
           # Attach the VDI to the VM
           vbd_ref = create_vbd(vm_ref, vdi_ref, 0)
-          cleanup(vm_ref) unless vbd_ref 
+          cleanup(vm_ref) unless vbd_ref
           ui.msg( "#{ h.color "OK", :green}" )
- 
-          ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}" 
+
+          ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}"
           ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"
           ui.msg "Install Repo: #{ h.color(repo,:bold, :cyan)}"
-          ui.msg "Memory: #{ h.color( locate_config_value(:xapi_mem).to_s, :bold, :cyan)}" 
+          ui.msg "Memory: #{ h.color( locate_config_value(:xapi_mem).to_s, :bold, :cyan)}"
           ui.msg "CPUs:   #{ h.color( locate_config_value(:xapi_cpus).to_s, :bold, :cyan)}"
           ui.msg "Disk:   #{ h.color( locate_config_value(:xapi_disk_size).to_s, :bold, :cyan)}"
           provisioned = xapi.VM.provision(vm_ref)
 
           ui.msg "Starting new Guest #{h.color( provisioned, :cyan)} "
           task = xapi.Async.VM.start(vm_ref, false, true)
-          wait_on_task(task) 
+          wait_on_task(task)
           ui.msg( "#{ h.color "OK!", :green}" )
 
-          exit 0 unless locate_config_value(:run_list)       
+          exit 0 unless locate_config_value(:run_list)
         rescue Exception => e
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
           # have to use join here to pass a string to highline
           puts "Nested backtrace:"
           ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
-          
+
           cleanup(vm_ref)
         end
 
         if locate_config_value(:run_list).empty? or ! locate_config_value(:template_file)
-          exit 0 
+          exit 0
         end
 
         guest_addr = wait_for_guest_ip(vm_ref)
@@ -342,8 +339,8 @@ class Chef
           cleanup(vm_ref)
         end
 
-        
-        begin 
+
+        begin
           bootstrap = Chef::Knife::Bootstrap.new
           bootstrap.name_args = [ guest_addr ]
           bootstrap.config[:run_list] = locate_config_value(:run_list)
@@ -360,9 +357,9 @@ class Chef
           bootstrap.config[:environment] = config[:environment]
           bootstrap.config[:host_key_verify] = false
           bootstrap.config[:run_list] = locate_config_value(:run_list)
-          
+
           bootstrap.run
-        rescue Exception => e 
+        rescue Exception => e
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
           puts "Nested backtrace:"
           ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"

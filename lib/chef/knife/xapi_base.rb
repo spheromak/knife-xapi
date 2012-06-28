@@ -1,6 +1,6 @@
 # Xapi Base Module
 #
-# Description:: Setup the Session and auth for xapi 
+# Description:: Setup the Session and auth for xapi
 #   other common methods used for talking with the xapi
 #
 # Author:: Jesse Nelson <spheromak@gmail.com>
@@ -21,28 +21,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ruby 1.8.7 doesn't like ||= with  Constants
-unless defined?(XAPI_TEMP_REGEX)
-  XAPI_TEMP_REGEX = /^CentOS 5.*\(64-bit\)/
-end
 
 require 'chef/knife'
 require 'units/standard'
 require 'xenapi'
 
 class Chef::Knife
-    @defaults = Hash.new
     module XapiBase
 
+    attr :defaults
 
     def self.included(includer)
       includer.class_eval do
+
         deps do
           require 'xenapi'
           require 'highline'
           require 'highline/import'
-          require 'readline'  
-        end 
+          require 'readline'
+        end
 
         option :xapi_host,
           :short => "-h SERVER_URL",
@@ -61,36 +58,51 @@ class Chef::Knife
           :long => "--xapi-username USERNAME",
           :proc => Proc.new { |key| Chef::Config[:knife][:xapi_username] = key },
           :description => "Your xenserver username"
-      
+
         option :domain,
           :short => "-f Name",
           :long => "--domain Name",
           :description => "the domain name for the guest",
           :proc => Proc.new { |key| Chef::Config[:knife][:domain] = key }
-
       end
-
     end
 
-    # highline setup
+
+
+    def self.set_defaults(config)
+      @defaults ||= Hash.new
+      @defaults.merge!(config)
+    end
+
+    # set the default template
+    self.set_defaults( { :template_regex =>  /^CentOS 5.*\(64-bit\)/ } )
+
+    def self.defaults
+      @defaults ||= Hash.new
+    end
+
+    def self.get_default(key)
+      @defaults[key] || nil
+    end
+
     def h
       @highline ||= ui.highline
-    end 
+    end
 
     # setup and return an authed xen api instance
     def xapi
-      @xapi ||= begin 
+      @xapi ||= begin
 
         ui.fatal "Must provide a xapi host with --host "unless locate_config_value(:xapi_host)
         session = XenApi::Client.new(  locate_config_value(:xapi_host) )
-        
+
         # get the password from the user
         password =  locate_config_value(:xapi_password) || nil
         username =  locate_config_value(:xapi_username) || "root"
         if password.nil?  or password.empty?
           password = h.ask("Enter password for user #{username}:  " ) { |input| input.echo = "*" }
         end
-        session.login_with_password(username, password) 
+        session.login_with_password(username, password)
 
         session
       end
@@ -98,7 +110,7 @@ class Chef::Knife
 
     def locate_config_value(key)
       key = key.to_sym
-      config[key] || Chef::Config[:knife][key]  || @defaults[key]
+      config[key] || Chef::Config[:knife][key]  || Chef::Knife::XapiBase.get_default(key)
     end
 
     # get template by name_label
@@ -107,12 +119,13 @@ class Chef::Knife
     end
 
     #
-    # find a template matching what the user provided 
-    # 
+    # find a template matching what the user provided
+    #
     # returns a ref to the vm or nil if nothing found
-    # 
-    def find_template(template=XAPI_TEMP_REGEX)
-      # if we got a string then try to find that template exact 
+    #
+    def find_template(template)
+      template = locate_config_value(:template_regex) if template.nil?
+      # if we got a string then try to find that template exact
       #  if no exact template matches, search
       if template.is_a?(String)
         found = get_template(template)
@@ -121,23 +134,23 @@ class Chef::Knife
 
       #  make sure our nil template gets set to default
       if template.nil?
-        template = XAPI_TEMP_REGEX
-      end 
+        template = locate_config_value(:template_regex)
+      end
 
       Chef::Log.debug "Name: #{template.class}"
       # quick and dirty string to regex
       unless template.is_a?(Regexp)
-        template = /#{template}/ 
+        template = /#{template}/
       end
 
-      # loop over all vm's and find the template 
+      # loop over all vm's and find the template
       # Wish there was a better API method for this, and there might be
       #  but i couldn't find it
       Chef::Log.debug "Using regex: #{template}"
       xapi.VM.get_all_records().each_value do |vm|
         if vm["is_a_template"] and  vm["name_label"] =~ template
           Chef::Log.debug "Matched: #{h.color(vm["name_label"], :yellow )}"
-          found = vm # we're gonna go with the last found 
+          found = vm # we're gonna go with the last found
         end
       end
 
@@ -148,8 +161,8 @@ class Chef::Knife
       end
       return nil
     end
- 
-    # present a list of options for a user to select 
+
+    # present a list of options for a user to select
     # return the selected item
     def user_select(items)
       choose do |menu|
@@ -157,8 +170,8 @@ class Chef::Knife
         menu.prompt = "Please Choose One:"
         menu.select_by =  :index_or_name
         items.each do |item|
-          menu.choice item.to_sym do |command| 
-            say "Using: #{command}" 
+          menu.choice item.to_sym do |command|
+            say "Using: #{command}"
             selected = command.to_s
           end
         end
@@ -167,7 +180,7 @@ class Chef::Knife
     end
 
     # generate a random mac address
-    def generate_mac 
+    def generate_mac
       ("%02x"%(rand(64)*4|2))+(0..4).inject(""){|s,x|s+":%02x"%rand(256)}
     end
 
@@ -175,19 +188,19 @@ class Chef::Knife
     def add_vif_by_name(vm_ref, dev_num, net_name)
       Chef::Log.debug "Looking up vif for: #{h.color(net_name, :cyan)}"
       network_ref = xapi.network.get_by_name_label(net_name).first
-      if network_ref.nil? 
-        if net_name =~ /Network (\d)+$/  # special handing for 'Network X' As displayed by XenCenter   
+      if network_ref.nil?
+        if net_name =~ /Network (\d)+$/  # special handing for 'Network X' As displayed by XenCenter
           add_vif_by_name(vm_ref, dev_num, "Pool-wide network associated with eth#{$1}")
         else
           ui.warn "#{h.color(net_name,:red)} not found, moving on"
         end
-        return 
+        return
       end
 
       mac = generate_mac
       Chef::Log.debug "Provisioning:  #{h.color(net_name, :cyan)}, #{h.color(mac,:green)}, #{h.color(network_ref, :yellow)}"
 
-      vif = { 
+      vif = {
         'device'  => dev_num.to_s,
         'network' => network_ref,
         'VM'  => vm_ref,
@@ -211,7 +224,7 @@ class Chef::Knife
 
     # returns sr_ref to the default sr on pool
     def find_default_sr()
-      xapi.pool.get_default_SR( xapi.pool.get_all()[0] ) 
+      xapi.pool.get_default_SR( xapi.pool.get_all()[0] )
     end
 
     # return an SR record from the name_label
@@ -251,7 +264,7 @@ class Chef::Knife
         "read_only" => false,
         "other_config" => {},
       }
-    
+
       # Async create the VDI
       task = xapi.Async.VDI.create(vdi_record)
       ui.msg "waiting for VDI Create"
@@ -266,27 +279,27 @@ class Chef::Knife
         sleep 1
       end
     end
-   
+
     # return the opaque ref of the task that was run by a task record if it succeded.
-    # else it returns nil 
+    # else it returns nil
     def get_task_ref(task)
       wait_on_task(task)
-      case xapi.task.get_status(task) 
+      case xapi.task.get_status(task)
       when "success"
-        # xapi task record returns result as  <value>OpaqueRef:....</value>  
+        # xapi task record returns result as  <value>OpaqueRef:....</value>
         # we want the ref. this way it will work if they fix it to return jsut the ref
         ref = xapi.task.get_result(task).match(/OpaqueRef:[^<]+/).to_s
         #cleanup our task
         xapi.task.destroy(task)
         return ref
-      else 
+      else
         ui.msg( "#{h.color 'ERROR:', :red } Task returned: #{xapi.task.get_result(task)}"   )
         return nil
       end
     end
 
 
-    # create vbd and return a ref 
+    # create vbd and return a ref
     def create_vbd(vm_ref, vdi_ref, position)
       vbd_record = {
         "VM" => vm_ref,
@@ -304,7 +317,7 @@ class Chef::Knife
 
       task = xapi.Async.VBD.create(vbd_record)
       ui.msg "Waiting for VBD create"
-      vbd_ref = get_task_ref(task) 
+      vbd_ref = get_task_ref(task)
     end
 
     # try to get a guest ip and return it
@@ -318,7 +331,7 @@ class Chef::Knife
         end
       end
       return guest_ip
-    end 
+    end
 
   end
 end
