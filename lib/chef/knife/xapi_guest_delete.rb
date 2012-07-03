@@ -56,6 +56,50 @@ class Chef
 
         # shutdown and dest
         unless xapi.VM.get_power_state(vm) == "Halted" 
+          # Get all VDIs known to the system
+          vdis = xapi.VDI.get_all()
+          index = 1
+          for vdi_ in vdis do
+            puts index + ": " + vdi_.get_name_label()
+            index += 1
+          end
+          
+          # Get VBD reference from the VM 
+          vbds = xapi.VM.get_VBDs(vm)
+          vbd = vdbs.first
+
+          print "Detaching volumes from the VM:" 
+
+          # Detache the volume from the VM
+          task = xapi.Async.VBD.unplug(vbd)
+          wait_on_task(task)
+          print " #{h.color "Detached volume from the VM...", :green} \n"
+
+          # Get VDI ref from the VBD
+          vdi = xapi.VBD.get_VDI(vbd)
+          print " #{h.color "Got VDI from VBD...", :green} \n"
+
+          # Destroy VBD reference
+          task = xapi.Async.VBD.destroy(vbd)
+          wait_on_task(task)
+          print " #{h.color "Destroyed VBD..", :green} \n"
+
+          # Destroy VDI object (volume)
+          task = xapi.Async.VDI.destroy(vdi)
+          wait_on_task(task)
+          print " #{h.color "Destroyed VDI..", :green} \n"
+
+          vdis = xapi.VDI.get_all()
+          index = 1
+          for vdi_ in vdis do
+            puts index + ": " + vdi_.get_name_label()
+            index += 1
+          end
+
+        end
+
+        # shutdown and dest
+        unless xapi.VM.get_power_state(vm) == "Halted" 
           print "Shutting down Guest:" 
           task = xapi.Async.VM.hard_shutdown(vm)
           wait_on_task(task)
