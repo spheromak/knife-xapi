@@ -35,6 +35,11 @@ class Chef
 
       def run 
         server_name = @name_args[0]
+		if server_name.nil?
+			puts "Error: No VM Name specified..."
+			puts "Usage: " + banner
+			exit 1
+		end
 
         vms = [] 
         if config[:uuid]
@@ -61,25 +66,23 @@ class Chef
         	# Get VBDs from the VM 
         	vbds = xapi.VM.get_VBDs(vm)
         	for vbd in vbds
-        		# Get VDIs from the VBD
+        		# Get VDI from the VBD
             	vdis <<  xapi.VBD.get_VDI(vbd)
           	end
 
 			# shutdown and destroy
-			unless xapi.VM.get_power_state(vm) == "Halted" 
-				print "Shutting down Guest:" 
-				task = xapi.Async.VM.hard_shutdown(vm)
-				wait_on_task(task)
-				print " #{h.color "Done", :green} \n"
-			end
+			print "Shutting down Guest:" 
+			task = xapi.Async.VM.hard_shutdown(vm)
+			wait_on_task(task)
+			print " #{h.color "Done", :green} \n"
 
-			print "Destroying Guest: #{h.color( server_name, :cyan)} " 
+			print "Destroying Guest #{h.color( server_name, :cyan)} " 
 			task = xapi.Async.VM.destroy(vm) 
 			wait_on_task(task)
 			print " #{h.color "Done", :green}\n"
 
 			for vdi in vdis
-				# Destroy VDI object (volume)
+				# Destroy VDI object
 				task = xapi.Async.VDI.destroy(vdi)
 				print "Destroying volume: "
 				task_ref = get_task_ref(task)

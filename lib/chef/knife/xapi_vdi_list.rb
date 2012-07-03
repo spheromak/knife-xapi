@@ -23,47 +23,33 @@ require 'chef/knife/xapi_base'
 
 class Chef
   class Knife
-    class XapiCheckVolumes < Knife
+    class XapiVdiList < Knife
       include Chef::Knife::XapiBase
 
-      banner "knife xapi check_volumes"
+      banner "knife xapi vdi list"
 
       def run 
           # Get all VDIs known to the system
           vdis = xapi.VDI.get_all()
-          index = 1
 
           puts "================================================"
           for vdi_ in vdis do
             puts "#{h.color "VDI name: " + xapi.VDI.get_name_label(vdi_), :green}"
+            puts "  -UUID: " + xapi.VDI.get_uuid(vdi_)
             puts "  -Description: " + xapi.VDI.get_name_description(vdi_)
             puts "  -Type: " + xapi.VDI.get_type(vdi_)
 
             vbds = xapi.VDI.get_VBDs(vdi_)
             for vbd in vbds do
-              #puts "VBD ID: " + xapi.VBD.get_uuid(vbd)
-              
               vm = xapi.VBD.get_VM(vbd)
               state = xapi.VM.get_power_state(vm)
               puts "    -VM name: " + xapi.VM.get_name_label(vm)
               puts "    -VM state: " + state + "\n"
             end
 
-            if vbds.empty?
-                print "  No VM attached! Do you want to destroy this volume? (Type \'yes\' or \'no\'): "
-				choice = STDIN.gets		
-				while !(choice.match(/^yes$|^no$/))
-        			puts "Invalid input! Type \'yes\' or \'no\':"
-					choice = STDIN.gets		
-				end
-
-				if choice.match('yes')
-					  # Destroy VDI object (volume)
-					  task = xapi.Async.VDI.destroy(vdi_)
-					  puts "Destroying volume.."
-					  task_ref = get_task_ref(task)
-					  print "#{h.color "OK.", :green} \n"
-				end
+            if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
+                puts "  No VM attached!"
+                #puts "  No VM attached! Use vdi delete --cleanup to delete this volume."
             end
             puts "================================================"
           end
