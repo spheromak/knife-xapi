@@ -7,6 +7,7 @@ group :development do
   gem "rdoc"
   gem "bundler"
   gem "jeweler"
+  gem "pry"
 end
 
 gemspec
