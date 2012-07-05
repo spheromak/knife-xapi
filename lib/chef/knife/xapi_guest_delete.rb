@@ -45,10 +45,10 @@ class Chef
         vms.flatten! 
 
         if vms.empty? 
-          ui.msg "VM not found: #{h.color server_name, :red}" 
+          puts "VM not found: #{h.color server_name, :red}" 
           exit 1
         elsif vms.length > 1
-          ui.msg "Multiple VM matches found use guest list if you are unsure"
+          puts "Multiple VM matches found use guest list if you are unsure"
           vm = user_select(vms)
         else 
           vm = vms.first
@@ -56,62 +56,36 @@ class Chef
 
         # shutdown and dest
         unless xapi.VM.get_power_state(vm) == "Halted" 
-          # Get all VDIs known to the system
-          vdis = xapi.VDI.get_all()
-          index = 1
-          for vdi_ in vdis do
-            puts index + ": " + vdi_.get_name_label()
-            index += 1
-          end
-          
-          # Get VBD reference from the VM 
-          vbds = xapi.VM.get_VBDs(vm)
-          vbd = vdbs.first
+        	vdis = []
 
-          print "Detaching volumes from the VM:" 
+        	# Get VBDs from the VM 
+        	vbds = xapi.VM.get_VBDs(vm)
+        	for vbd in vbds
+        		# Get VDIs from the VBD
+            	vdis <<  xapi.VBD.get_VDI(vbd)
+          	end
 
-          # Detache the volume from the VM
-          task = xapi.Async.VBD.unplug(vbd)
-          wait_on_task(task)
-          print " #{h.color "Detached volume from the VM...", :green} \n"
+			# shutdown and destroy
+			unless xapi.VM.get_power_state(vm) == "Halted" 
+				print "Shutting down Guest:" 
+				task = xapi.Async.VM.hard_shutdown(vm)
+				wait_on_task(task)
+				print " #{h.color "Done", :green} \n"
+			end
 
-          # Get VDI ref from the VBD
-          vdi = xapi.VBD.get_VDI(vbd)
-          print " #{h.color "Got VDI from VBD...", :green} \n"
+			print "Destroying Guest: #{h.color( server_name, :cyan)} " 
+			task = xapi.Async.VM.destroy(vm) 
+			wait_on_task(task)
+			print " #{h.color "Done", :green}\n"
 
-          # Destroy VBD reference
-          task = xapi.Async.VBD.destroy(vbd)
-          wait_on_task(task)
-          print " #{h.color "Destroyed VBD..", :green} \n"
-
-          # Destroy VDI object (volume)
-          task = xapi.Async.VDI.destroy(vdi)
-          wait_on_task(task)
-          print " #{h.color "Destroyed VDI..", :green} \n"
-
-          vdis = xapi.VDI.get_all()
-          index = 1
-          for vdi_ in vdis do
-            puts index + ": " + vdi_.get_name_label()
-            index += 1
-          end
-
+			for vdi in vdis
+				# Destroy VDI object (volume)
+				task = xapi.Async.VDI.destroy(vdi)
+				print "Destroying volume: "
+				task_ref = get_task_ref(task)
+			end
         end
-
-        # shutdown and dest
-        unless xapi.VM.get_power_state(vm) == "Halted" 
-          print "Shutting down Guest:" 
-          task = xapi.Async.VM.hard_shutdown(vm)
-          wait_on_task(task)
-          print " #{h.color "Done", :green} \n"
-        end
-
-        print "Destroying Guest: #{h.color( server_name, :cyan)} " 
-        task = xapi.Async.VM.destroy(vm) 
-        wait_on_task(task)
-        print " #{h.color "Done", :green}\n"
       end
-
     end
   end
 end
