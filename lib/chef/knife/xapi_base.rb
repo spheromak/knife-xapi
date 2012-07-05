@@ -284,7 +284,10 @@ class Chef::Knife
     # else it returns nil
     def get_task_ref(task)
       wait_on_task(task)
-      case xapi.task.get_status(task)
+      status_ = xapi.task.get_status(task)
+      puts "#{h.color "#{status_}", :green }"
+
+      case status_
       when "success"
         # xapi task record returns result as  <value>OpaqueRef:....</value>
         # we want the ref. this way it will work if they fix it to return jsut the ref
@@ -293,8 +296,8 @@ class Chef::Knife
         xapi.task.destroy(task)
         return ref
       else
-        ui.msg( "#{h.color 'ERROR:', :red } Task returned: #{xapi.task.get_result(task)}"   )
-        return nil
+        #ui.msg( "#{h.color 'ERROR:', :red } Task returned: #{xapi.task.get_result(task)}"   )
+        ui.msg( "#{h.color 'ERROR:', :red } #{xapi.task.get_error_info(task)}"   )
       end
     end
 
