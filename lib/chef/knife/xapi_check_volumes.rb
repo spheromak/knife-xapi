@@ -28,11 +28,6 @@ class Chef
 
       banner "knife xapi check_volumes"
 
-      #option :uuid,
-      #    :short => "-U",
-      #    :long => "--uuid",
-      #    :description => "Treat the label as a UUID not a name label"
-
       def run 
           # Get all VDIs known to the system
           vdis = xapi.VDI.get_all()
