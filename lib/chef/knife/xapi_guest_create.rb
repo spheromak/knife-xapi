@@ -320,7 +320,7 @@ class Chef
         guest_addr = wait_for_guest_ip(vm_ref)
         if guest_addr.nil? or guest_addr.empty?
           ui.msg("ip seems wrong using host+domain name instead")
-          guest_addr = "#{host_name}.#{domainname}"
+          guest_addr = "#{hostname}.#{domainname}"
         end
         ui.msg "Trying to connect to guest @ #{guest_addr} "
 
