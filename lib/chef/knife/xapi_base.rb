@@ -296,7 +296,7 @@ class Chef::Knife
         xapi.task.destroy(task)
         return ref
       else
-        ui.msg( "#{h.color "#{status_}", :red } "
+        ui.msg( "#{h.color "#{status_}", :red } ")
         ui.msg( "#{h.color 'ERROR:', :red } #{xapi.task.get_error_info(task)}"   )
       end
     end
