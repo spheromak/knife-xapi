@@ -284,14 +284,11 @@ class Chef
 
           # Create the VDI
           vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
-          # if vdi_ref is nill we need to bail/cleanup
           cleanup(vm_ref) unless vdi_ref
-          ui.msg( "#{ h.color "OK", :green} ")
 
           # Attach the VDI to the VM
           vbd_ref = create_vbd(vm_ref, vdi_ref, 0)
           cleanup(vm_ref) unless vbd_ref
-          ui.msg( "#{ h.color "OK", :green}" )
 
           ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}"
           ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"

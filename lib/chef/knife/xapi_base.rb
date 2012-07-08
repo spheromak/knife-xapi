@@ -285,10 +285,10 @@ class Chef::Knife
     def get_task_ref(task)
       wait_on_task(task)
       status_ = xapi.task.get_status(task)
-      puts "#{h.color "#{status_}", :green }"
 
       case status_
       when "success"
+        puts "#{h.color "#{status_}", :green }"
         # xapi task record returns result as  <value>OpaqueRef:....</value>
         # we want the ref. this way it will work if they fix it to return jsut the ref
         ref = xapi.task.get_result(task).match(/OpaqueRef:[^<]+/).to_s
@@ -296,7 +296,7 @@ class Chef::Knife
         xapi.task.destroy(task)
         return ref
       else
-        #ui.msg( "#{h.color 'ERROR:', :red } Task returned: #{xapi.task.get_result(task)}"   )
+        ui.msg( "#{h.color "#{status_}", :red } "
         ui.msg( "#{h.color 'ERROR:', :red } #{xapi.task.get_error_info(task)}"   )
       end
     end
