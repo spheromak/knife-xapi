@@ -232,7 +232,7 @@ class Chef
 
         # TODO: lift alot of this
         begin
-          xapi.VM.set_name_description(vm_ref, "VM from knife-xapi as #{server_name}")
+          xapi.VM.set_name_description(vm_ref, "VM from knife-xapi as #{server_name} by #{ENV['USER']}")
 
           # configure the install repo
           repo = locate_config_value(:install_repo)
@@ -320,7 +320,7 @@ class Chef
         guest_addr = wait_for_guest_ip(vm_ref)
         if guest_addr.nil? or guest_addr.empty?
           ui.msg("ip seems wrong using host+domain name instead")
-          guest_addr = "#{hostname}.#{domainname}"
+          guest_addr = "#{server_name}.#{domainname}"
         end
         ui.msg "Trying to connect to guest @ #{guest_addr} "
 

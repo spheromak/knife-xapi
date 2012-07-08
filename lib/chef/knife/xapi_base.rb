@@ -256,7 +256,7 @@ class Chef::Knife
     def create_vdi(name, sr_ref, size)
       vdi_record = {
         "name_label" => "#{name}",
-        "name_description" => "Root disk for #{name} created by knfie xapi",
+        "name_description" => "Root disk for #{name} created by #{ENV['USER']} with knfie xapi",
         "SR" => sr_ref,
         "virtual_size" => input_to_bytes(size).to_s,
         "type" => "system",
