@@ -117,6 +117,11 @@ class Chef
 		  end
 		else
         	vdi_name = @name_args[0]
+			if vdi_name.nil?
+				puts "Error: No VDI Name specified..."
+				puts "Usage: " + banner
+				exit 1
+			end
 			vdis = [] 
 			if config[:uuid]
 			  vdis << xapi.VDI.get_by_uuid(vdi_name)
