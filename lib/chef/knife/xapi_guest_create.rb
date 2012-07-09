@@ -228,7 +228,9 @@ class Chef
         template_ref = find_template( locate_config_value(:xapi_vm_template) )
 
         Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}"
-        vm_ref = xapi.VM.clone(template_ref, fqdn)
+        task = xapi.Async.VM.clone(template_ref, fqdn)
+        ui.msg "Waiting on Template Clone"
+        vm_ref = get_task_ref(task)
 
         # TODO: lift alot of this
         begin
