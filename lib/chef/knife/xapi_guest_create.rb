@@ -31,6 +31,7 @@ class Chef
         :domain => "",
         :ssh_user => "root",
         :ssh_port => "22",
+        :ping_timeout => 600,
         :install_repo =>  "http://isoredirect.centos.org/centos/6/os/x86_64/",
         :kernel_params => "graphical utf8",
         :xapi_disk_size => "8g",
@@ -119,6 +120,10 @@ class Chef
         :long => "--ssh-port PORT",
         :description => "The ssh port"
 
+      option :ping_timeout,
+        :long => "--ping-timeout",
+        :description => "Seconds to timeout waiting for ip from guest"
+
       option :bootstrap_version,
         :long => "--bootstrap-version VERSION",
         :description => "The version of Chef to install"
@@ -175,7 +180,7 @@ class Chef
 
       def wait_for_guest_ip(vm_ref)
         begin
-          timeout(600) do
+          timeout( locate_config_value(:ping_timeout).to_i ) do
             ui.msg "Waiting for guest ip address"
             guest_ip = ""
             while guest_ip.empty?
