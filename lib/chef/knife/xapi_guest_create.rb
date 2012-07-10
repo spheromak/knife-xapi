@@ -175,7 +175,7 @@ class Chef
 
       def wait_for_guest_ip(vm_ref)
         begin
-          timeout(480) do
+          timeout(600) do
             ui.msg "Waiting for guest ip address"
             guest_ip = ""
             while guest_ip.empty?
