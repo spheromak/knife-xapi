@@ -26,12 +26,27 @@ class Chef
     class XapiGuestDelete < Knife
       include Chef::Knife::XapiBase
 
+      deps do
+        require 'chef/api_client'
+        require 'chef/json_compat'
+      end
+
       banner "knife xapi guest delete NAME_LABEL (options)"
 
       option :uuid,
           :short => "-U",
           :long => "--uuid",
           :description => "Treat the label as a UUID not a name label"
+
+      option :keep_client,
+        :short => "-C",
+        :long => "--keep-client",
+        :description => "Keep client info on the chef-server"
+
+      option :keep_node,
+        :short => "-N",
+        :long => "--keep-node",
+        :description => "Keep node info on the chef-server"
 
       def run 
         server_name = @name_args[0]
@@ -88,8 +103,57 @@ class Chef
 				task_ref = get_task_ref(task)
 			end
         end
+
+
+		#############################################
+		# Delete client and node on the chef server #
+		#############################################
+
+		if config[:uuid]
+			name = get_name_label(vm)
+		else
+			name = server_name
+		end
+
+		if !config[:keep_client]
+				found = false
+				client_list = Chef::ApiClient.list
+
+				for client in client_list.keys
+					if name.eql? client
+						found = true
+						puts "Found client #{h.color name, :cyan} "
+					end
+				end
+
+				puts "Deleting Client #{h.color name, :cyan}..."
+				if found
+					delete_object(Chef::ApiClient, name)
+				else
+					puts "Client not found on the chef server.. Skipping.."
+				end
+		end
+
+		if !config[:keep_node]
+				found = false
+				env = Chef::Config[:environment]
+				node_list = env ? Chef::Node.list_by_environment(env) : Chef::Node.list
+
+				for node in node_list.keys
+					if name.eql? node
+						found = true
+						puts "Found node #{h.color name, :cyan} "
+					end
+				end
+
+				puts "Deleting Node #{h.color name, :cyan}..."
+				if found
+					delete_object(Chef::Node, name)
+				else
+					puts "Node not found on the chef server.. Skipping.."
+				end
+		end
       end
     end
   end
 end
-
