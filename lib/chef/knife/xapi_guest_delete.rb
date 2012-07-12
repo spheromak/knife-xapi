@@ -49,63 +49,63 @@ class Chef
         :description => "Keep node info on the chef-server"
 
       def run 
-      server_name = @name_args[0]
+        server_name = @name_args[0]
 
-      if server_name.nil?
-        puts "Error: No VM Name specified..."
-        puts "Usage: " + banner
-        exit 1
-      end
-
-      name = server_name
-      if config[:uuid]
-        name = get_name_label(vm)
-      end
-
-      vms = [] 
-      if config[:uuid]
-        vms << xapi.VM.get_by_uuid(server_name)
-      else
-        vms << xapi.VM.get_by_name_label(server_name)
-      end
-      vms.flatten! 
-
-      if vms.empty? 
-        puts "VM not found: #{h.color server_name, :red}" 
-        exit 1
-      elsif vms.length > 1
-        puts "Multiple VM matches found use guest list if you are unsure"
-        vm = user_select(vms)
-      else 
-        vm = vms.first
-      end
-      
-      # Cleanup the VM
-      cleanup(vm)
-
-
-      #############################################
-      # Delete client and node on the chef server #
-      #############################################
-      unless config[:keep_client]
-        client_list = Chef::ApiClient.list
-
-        if client_list.has_key?(name_label)	
-          ui.msg "Removing client  #{h.color name, :cyan} from chef"
-          delete_object(Chef::ApiClient, name)
-        else
-          puts "Client not found on the chef server.. Nothing to delete.."
+        if server_name.nil?
+          puts "Error: No VM Name specified..."
+          puts "Usage: " + banner
+          exit 1
         end
-      end
 
-      unless config[:keep_node]
-        env = Chef::Config[:environment]
-        node_list = env ? Chef::Node.list_by_environment(env) : Chef::Node.list
-        if node_list.hask_key?(name)
-          ui.msg "Removing node #{h.color name, :cyan} from chef "
-          delete_object(Chef::Node, name)
+        name = server_name
+        if config[:uuid]
+          name = get_name_label(vm)
+        end
+
+        vms = [] 
+        if config[:uuid]
+          vms << xapi.VM.get_by_uuid(server_name)
         else
-          puts "Node not found on the chef server.. Nothing to delete.."
+          vms << xapi.VM.get_by_name_label(server_name)
+        end
+        vms.flatten! 
+
+        if vms.empty? 
+          puts "VM not found: #{h.color server_name, :red}" 
+          exit 1
+        elsif vms.length > 1
+          puts "Multiple VM matches found use guest list if you are unsure"
+          vm = user_select(vms)
+        else 
+          vm = vms.first
+        end
+        
+        # Cleanup the VM
+        cleanup(vm)
+
+        #############################################
+        # Delete client and node on the chef server #
+        #############################################
+        unless config[:keep_client]
+          client_list = Chef::ApiClient.list
+
+          if client_list.has_key?(name_label)	
+            ui.msg "Removing client  #{h.color name, :cyan} from chef"
+            delete_object(Chef::ApiClient, name)
+          else
+            puts "Client not found on the chef server.. Nothing to delete.."
+          end
+        end
+
+        unless config[:keep_node]
+          env = Chef::Config[:environment]
+          node_list = env ? Chef::Node.list_by_environment(env) : Chef::Node.list
+          if node_list.hask_key?(name)
+            ui.msg "Removing node #{h.color name, :cyan} from chef "
+            delete_object(Chef::Node, name)
+          else
+            puts "Node not found on the chef server.. Nothing to delete.."
+          end
         end
       end
 
