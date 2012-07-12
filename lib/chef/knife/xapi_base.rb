@@ -171,7 +171,7 @@ class Chef::Knife
         menu.select_by =  :index_or_name
         items.each do |item|
           menu.choice item.to_sym do |command|
-            say "Using: #{command}"
+            ui.msg "Using: #{command}"
             selected = command.to_s
           end
         end
@@ -191,7 +191,7 @@ class Chef::Knife
     
       ui.msg "Removing disks attached to Guest"
       wait_tasks = []
-      xapi.VM.get_VBDs(vm).each do |vdi|
+      xapi.VM.get_VBDs(vm_ref).each do |vdi|
         task = xapi.Async.VDI.destroy(vdi)
         wait_tasks <<  get_task_ref(task)
       end
