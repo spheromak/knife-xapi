@@ -179,28 +179,22 @@ class Chef::Knife
       end
     end
 
-    # cleanupa nd exit
-    def clean_exit(vm_ref)
-      ui.warn "Cleaning upwork and exiting"
-      cleanup vm_ref
-      exit 1
-    end
-
     # destroy/remove VM refs and exit
     def cleanup(vm_ref)
       # shutdown and dest
       unless xapi.VM.get_power_state(vm_ref) == "Halted"
         ui.msg "Shutting down Guest"
         task = xapi.Async.VM.hard_shutdown(vm_ref)
-        wait_on_task(task)
+        get_task_ref(task) unless task == "Halted"
       end
-    
+
       ui.msg "Removing disks attached to Guest"
+      Chef::Log.debug "getting vbds attached to #{vm_ref}"
       wait_tasks = []
-      xapi.VM.get_VBDs(vm_ref).each do |vbd|
-        next unless vdi
+      xapi.VM.get_VBDs(vm_ref).to_a.each do |vbd|
+        next unless vbd
         Chef::Log.debug "removing vdi: #{vbd}"
-        wait_tasks << xapi.Async.VBD.destroy(vbd)
+         wait_tasks << xapi.Async.VBD.destroy(vbd)
       end
 
       ui.msg "Destroying Guest"
@@ -209,11 +203,18 @@ class Chef::Knife
 
       # wait for disk cleanup to finish up
       unless wait_tasks.empty?
+        ui.msg "waiting for disks to cleanup"
         wait_tasks.each do |task|
-          ui.msg "waiting for disks to cleanup"
           wait_on_task(task)
         end
       end
+    end
+
+    # cleanup a vm and exit (fail)
+    def fail(ref=nil)
+      ui.warn "Error encountered clenaing up and exiting"
+      cleanup ref if ref
+      exit 1
     end
 
     # generate a random mac address
@@ -320,6 +321,7 @@ class Chef::Knife
     # return the opaque ref of the task that was run by a task record if it succeded.
     # else it returns nil
     def get_task_ref(task)
+      Chef::Log.debug "Waiting on task #{task}"
       wait_on_task(task)
       status_ = xapi.task.get_status(task)
 

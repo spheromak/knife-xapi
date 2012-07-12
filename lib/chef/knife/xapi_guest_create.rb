@@ -219,6 +219,8 @@ class Chef
         ui.msg "Waiting on Template Clone"
         vm_ref = get_task_ref(task)
 
+        Chef::Log.debug "New VM ref: #{vm_ref}"
+
         # TODO: lift alot of this
         begin
           xapi.VM.set_name_description(vm_ref, "VM from knife-xapi as #{server_name} by #{ENV['USER']}")
@@ -226,7 +228,6 @@ class Chef
           # configure the install repo
           repo = locate_config_value(:install_repo)
           xapi.VM.set_other_config(vm_ref, { "install-repository" => repo } )
-
 
           cpus = locate_config_value( :xapi_cpus ).to_s
 
@@ -267,17 +268,17 @@ class Chef
 
           if sr_ref.nil?
             ui.error "SR specified not found or can't be used Aborting"
-            clean_exit(vm_ref)
+            fail(vm_ref) if sr_ref.nil?
           end
           Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
 
           # Create the VDI
           vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
-          clean_exit(vm_ref) unless vdi_ref
+          fail(vm_ref) unless vdi_ref
 
           # Attach the VDI to the VM
           vbd_ref = create_vbd(vm_ref, vdi_ref, 0)
-          clean_exit(vm_ref) unless vbd_ref
+          fail(vm_ref) unless vbd_ref
 
           ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}"
           ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"
@@ -298,8 +299,7 @@ class Chef
           # have to use join here to pass a string to highline
           puts "Nested backtrace:"
           ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
-
-          clean_exit(vm_ref)
+          fail(vm_ref)
         end
 
         if locate_config_value(:run_list).empty? or ! locate_config_value(:template_file)
@@ -321,10 +321,9 @@ class Chef
             }
           end
         rescue Timeout::Error
-          ui.msg "Timeout trying to login cleaning up"
-          clean_exit(vm_ref)
+          ui.msg "Timeout trying to login Wont bootstrap"
+          fail
         end
-
 
         begin
           bootstrap = Chef::Knife::Bootstrap.new
@@ -349,9 +348,8 @@ class Chef
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
           puts "Nested backtrace:"
           ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
-          clean_exit(vm_ref)
+          fail
         end
-
       end
 
     end
