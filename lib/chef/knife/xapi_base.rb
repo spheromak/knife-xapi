@@ -165,7 +165,7 @@ class Chef::Knife
     # present a list of options for a user to select
     # return the selected item
     def user_select(items)
-      choose do |menu|
+      h.choose do |menu|
         menu.index  = :number
         menu.prompt = "Please Choose One:"
         menu.select_by =  :index_or_name
