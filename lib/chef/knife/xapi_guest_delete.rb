@@ -79,9 +79,13 @@ class Chef
         else 
           vm = vms.first
         end
-        
+       
         # Cleanup the VM
-        cleanup(vm)
+        if vm == :all
+          vms.each {|vm| cleanup(vm) }
+        else 
+          cleanup(vm)
+        end
 
         #############################################
         # Delete client and node on the chef server #

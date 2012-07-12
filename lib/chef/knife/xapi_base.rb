@@ -175,6 +175,7 @@ class Chef::Knife
             selected = command.to_s
           end
         end
+        menu.choice :all do return :all end
         menu.choice :exit do exit 1 end
       end
     end
@@ -193,13 +194,11 @@ class Chef::Knife
       wait_tasks = []
       xapi.VM.get_VBDs(vm_ref).to_a.each do |vbd|
         next unless vbd
-        Chef::Log.debug "removing vdi: #{vbd}"
-         wait_tasks << xapi.Async.VBD.destroy(vbd)
-      end
 
-      ui.msg "Destroying Guest"
-      task = xapi.Async.VM.destroy(vm_ref)
-      wait_on_task(task)
+        Chef::Log.debug "removing vbd: #{vbd}"
+        wait_tasks << xapi.Async.VDI.destroy( xapi.VBD.get_record(vbd)["VDI"] )
+        wait_tasks << xapi.Async.VBD.destroy(vbd)
+      end
 
       # wait for disk cleanup to finish up
       unless wait_tasks.empty?
@@ -208,6 +207,10 @@ class Chef::Knife
           wait_on_task(task)
         end
       end
+
+      ui.msg "Destroying Guest"
+      task = xapi.Async.VM.destroy(vm_ref)
+      wait_on_task(task)
     end
 
     # cleanup a vm and exit (fail)
