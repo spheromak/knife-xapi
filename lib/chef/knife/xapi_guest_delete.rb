@@ -89,7 +89,7 @@ class Chef
         unless config[:keep_client]
           client_list = Chef::ApiClient.list
 
-          if client_list.has_key?(name_label)	
+          if client_list.has_key?(name)	
             ui.msg "Removing client  #{h.color name, :cyan} from chef"
             delete_object(Chef::ApiClient, name)
           else
