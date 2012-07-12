@@ -201,24 +201,6 @@ class Chef
         end
       end
 
-      # destroy/remove VM refs and exit
-      def cleanup(vm_ref)
-        ui.warn "Cleaning up work and exiting"
-        # shutdown and dest
-        unless xapi.VM.get_power_state(vm_ref) == "Halted"
-          print "Shutting down Guest"
-          task = xapi.Async.VM.hard_shutdown(vm_ref)
-          wait_on_task(task)
-          print " #{h.color "Done", :green} \n"
-        end
-
-        print "Destroying Guest"
-        task = xapi.Async.VM.destroy(vm_ref)
-        wait_on_task(task)
-        print " #{h.color "Done", :green} \n"
-        exit 1
-      end
-
 
       def run
         server_name = @name_args[0]

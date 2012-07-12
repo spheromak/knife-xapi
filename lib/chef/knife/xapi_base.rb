@@ -179,6 +179,34 @@ class Chef::Knife
       end
     end
 
+    # destroy/remove VM refs and exit
+    def cleanup(vm_ref)
+      ui.warn "Cleaning up work and exiting"
+      # shutdown and dest
+      unless xapi.VM.get_power_state(vm_ref) == "Halted"
+        ui.msg "Shutting down Guest"
+        task = xapi.Async.VM.hard_shutdown(vm_ref)
+        wait_on_task(task)
+      end
+    
+      ui.msg "Removing disks attached to Guest"
+      wait_tasks = []
+      xapi.VM.get_VBDs(vm).each do |vdi|
+        task = xapi.Async.VDI.destroy(vdi)
+        wait_tasks <<  get_task_ref(task)
+      end
+
+      ui.msg "Destroying Guest"
+      task = xapi.Async.VM.destroy(vm_ref)
+      wait_on_task(task)
+
+      # wait for disk cleanup to finish up
+      wait_tasks.each do |task|
+        ui.msg "waiting for disks to cleanup"
+        wait_on_task(task)
+      end
+    end
+
     # generate a random mac address
     def generate_mac
       ("%02x"%(rand(64)*4|2))+(0..4).inject(""){|s,x|s+":%02x"%rand(256)}
@@ -292,6 +320,7 @@ class Chef::Knife
         # xapi task record returns result as  <value>OpaqueRef:....</value>
         # we want the ref. this way it will work if they fix it to return jsut the ref
         ref = xapi.task.get_result(task).match(/OpaqueRef:[^<]+/).to_s
+
         #cleanup our task
         xapi.task.destroy(task)
         return ref

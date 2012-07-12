@@ -26,6 +26,11 @@ class Chef
     class XapiGuestDelete < Knife
       include Chef::Knife::XapiBase
 
+      deps do
+        require 'chef/api_client'
+        require 'chef/json_compat'
+      end
+
       banner "knife xapi guest delete NAME_LABEL (options)"
 
       option :uuid,
@@ -33,63 +38,77 @@ class Chef
           :long => "--uuid",
           :description => "Treat the label as a UUID not a name label"
 
+      option :keep_client,
+        :short => "-C",
+        :long => "--keep-client",
+        :description => "Keep client info on the chef-server"
+
+      option :keep_node,
+        :short => "-N",
+        :long => "--keep-node",
+        :description => "Keep node info on the chef-server"
+
       def run 
-        server_name = @name_args[0]
-		if server_name.nil?
-			puts "Error: No VM Name specified..."
-			puts "Usage: " + banner
-			exit 1
-		end
+      server_name = @name_args[0]
 
-        vms = [] 
-        if config[:uuid]
-          vms << xapi.VM.get_by_uuid(server_name)
+      if server_name.nil?
+        puts "Error: No VM Name specified..."
+        puts "Usage: " + banner
+        exit 1
+      end
+
+      name = server_name
+      if config[:uuid]
+        name = get_name_label(vm)
+      end
+
+      vms = [] 
+      if config[:uuid]
+        vms << xapi.VM.get_by_uuid(server_name)
+      else
+        vms << xapi.VM.get_by_name_label(server_name)
+      end
+      vms.flatten! 
+
+      if vms.empty? 
+        puts "VM not found: #{h.color server_name, :red}" 
+        exit 1
+      elsif vms.length > 1
+        puts "Multiple VM matches found use guest list if you are unsure"
+        vm = user_select(vms)
+      else 
+        vm = vms.first
+      end
+      
+      # Cleanup the VM
+      cleanup(vm)
+
+
+      #############################################
+      # Delete client and node on the chef server #
+      #############################################
+      unless config[:keep_client]
+        client_list = Chef::ApiClient.list
+
+        if client_list.has_key?(name_label)	
+          ui.msg "Removing client  #{h.color name, :cyan} from chef"
+          delete_object(Chef::ApiClient, name)
         else
-          vms << xapi.VM.get_by_name_label(server_name)
-        end
-        vms.flatten! 
-
-        if vms.empty? 
-          puts "VM not found: #{h.color server_name, :red}" 
-          exit 1
-        elsif vms.length > 1
-          puts "Multiple VM matches found use guest list if you are unsure"
-          vm = user_select(vms)
-        else 
-          vm = vms.first
-        end
-
-        # shutdown and dest
-        unless xapi.VM.get_power_state(vm) == "Halted" 
-        	vdis = []
-
-        	# Get VBDs from the VM 
-        	vbds = xapi.VM.get_VBDs(vm)
-        	for vbd in vbds
-        		# Get VDI from the VBD
-            	vdis <<  xapi.VBD.get_VDI(vbd)
-          	end
-
-			# shutdown and destroy
-			print "Shutting down Guest:" 
-			task = xapi.Async.VM.hard_shutdown(vm)
-			wait_on_task(task)
-			print " #{h.color "Done", :green} \n"
-
-			print "Destroying Guest #{h.color( server_name, :cyan)} " 
-			task = xapi.Async.VM.destroy(vm) 
-			wait_on_task(task)
-			print " #{h.color "Done", :green}\n"
-
-			for vdi in vdis
-				# Destroy VDI object
-				task = xapi.Async.VDI.destroy(vdi)
-				print "Destroying volume: "
-				task_ref = get_task_ref(task)
-			end
+          puts "Client not found on the chef server.. Nothing to delete.."
         end
       end
+
+      unless config[:keep_node]
+        env = Chef::Config[:environment]
+        node_list = env ? Chef::Node.list_by_environment(env) : Chef::Node.list
+        if node_list.hask_key?(name)
+          ui.msg "Removing node #{h.color name, :cyan} from chef "
+          delete_object(Chef::Node, name)
+        else
+          puts "Node not found on the chef server.. Nothing to delete.."
+        end
+      end
+
     end
   end
 end
-
