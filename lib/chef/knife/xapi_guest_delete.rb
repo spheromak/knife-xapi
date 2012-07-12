@@ -100,7 +100,7 @@ class Chef
         unless config[:keep_node]
           env = Chef::Config[:environment]
           node_list = env ? Chef::Node.list_by_environment(env) : Chef::Node.list
-          if node_list.hask_key?(name)
+          if node_list.has_key?(name)
             ui.msg "Removing node #{h.color name, :cyan} from chef "
             delete_object(Chef::Node, name)
           else
