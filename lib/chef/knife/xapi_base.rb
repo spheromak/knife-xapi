@@ -179,9 +179,15 @@ class Chef::Knife
       end
     end
 
+    # cleanupa nd exit
+    def clean_exit(vm_ref)
+      ui.warn "Cleaning upwork and exiting"
+      cleanup vm_ref
+      exit 1
+    end
+
     # destroy/remove VM refs and exit
     def cleanup(vm_ref)
-      ui.warn "Cleaning up work and exiting"
       # shutdown and dest
       unless xapi.VM.get_power_state(vm_ref) == "Halted"
         ui.msg "Shutting down Guest"
@@ -191,9 +197,10 @@ class Chef::Knife
     
       ui.msg "Removing disks attached to Guest"
       wait_tasks = []
-      xapi.VM.get_VBDs(vm_ref).each do |vdi|
-        task = xapi.Async.VDI.destroy(vdi)
-        wait_tasks <<  get_task_ref(task)
+      xapi.VM.get_VBDs(vm_ref).each do |vbd|
+        next unless vdi
+        Chef::Log.debug "removing vdi: #{vbd}"
+        wait_tasks << xapi.Async.VBD.destroy(vbd)
       end
 
       ui.msg "Destroying Guest"
@@ -201,9 +208,11 @@ class Chef::Knife
       wait_on_task(task)
 
       # wait for disk cleanup to finish up
-      wait_tasks.each do |task|
-        ui.msg "waiting for disks to cleanup"
-        wait_on_task(task)
+      unless wait_tasks.empty?
+        wait_tasks.each do |task|
+          ui.msg "waiting for disks to cleanup"
+          wait_on_task(task)
+        end
       end
     end
 

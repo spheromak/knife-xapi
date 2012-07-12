@@ -267,17 +267,17 @@ class Chef
 
           if sr_ref.nil?
             ui.error "SR specified not found or can't be used Aborting"
-            cleanup(vm_ref)
+            clean_exit(vm_ref)
           end
           Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
 
           # Create the VDI
           vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
-          cleanup(vm_ref) unless vdi_ref
+          clean_exit(vm_ref) unless vdi_ref
 
           # Attach the VDI to the VM
           vbd_ref = create_vbd(vm_ref, vdi_ref, 0)
-          cleanup(vm_ref) unless vbd_ref
+          clean_exit(vm_ref) unless vbd_ref
 
           ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}"
           ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"
@@ -299,7 +299,7 @@ class Chef
           puts "Nested backtrace:"
           ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
 
-          cleanup(vm_ref)
+          clean_exit(vm_ref)
         end
 
         if locate_config_value(:run_list).empty? or ! locate_config_value(:template_file)
@@ -322,7 +322,7 @@ class Chef
           end
         rescue Timeout::Error
           ui.msg "Timeout trying to login cleaning up"
-          cleanup(vm_ref)
+          clean_exit(vm_ref)
         end
 
 
@@ -349,7 +349,7 @@ class Chef
           ui.msg "#{h.color 'ERROR:'} #{h.color( e.message, :red )}"
           puts "Nested backtrace:"
           ui.msg "#{h.color( e.backtrace.join("\n"), :yellow)}"
-          cleanup(vm_ref)
+          clean_exit(vm_ref)
         end
 
       end
