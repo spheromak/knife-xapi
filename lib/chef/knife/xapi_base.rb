@@ -379,5 +379,41 @@ class Chef::Knife
       return guest_ip
     end
 
+    def get_vbds_from_vdi(vdi_ref)
+      return xapi.VDI.get_VBDs(vdi_ref)
+    end
+
+    def get_all_vdis()
+      return xapi.VDI.get_all()
+    end
+
+    def print_vdi_info(vdi_ref)
+      puts "#{h.color "VDI name: " + xapi.VDI.get_name_label(vdi_ref), :green}"
+      puts "  -Description: " + xapi.VDI.get_name_description(vdi_ref)
+      puts "  -Type: " + xapi.VDI.get_type(vdi_ref)
+    end
+
+    def yes_no_prompt(str)
+      print str
+      choice = STDIN.gets
+
+      while !(choice.match(/^yes$|^no$/))
+        puts "Invalid input! Type \'yes\' or \'no\':"
+        choice = STDIN.gets
+      end
+
+      if choice.match('yes')
+        return true
+      else
+        return false
+      end
+    end
+
+    def destroy_vdi(vdi_ref)
+      task = xapi.Async.VDI.destroy(vdi_ref)
+      print "Destroying volume "
+      puts "#{h.color xapi.VDI.get_name_label(vdi_ref), :cyan}"
+      task_ref = get_task_ref(task)
+    end
   end
 end
