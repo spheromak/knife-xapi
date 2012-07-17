@@ -271,14 +271,22 @@ class Chef
             fail(vm_ref) if sr_ref.nil?
           end
           Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
+        
+          # setup disks 
+          if locate_config_value(:xapi_disk_size)
+            # when a template already has disks, we decide the position number based on it. 
+	    	    position = xapi.VM.get_VBDs(vm_ref).length
 
-          # Create the VDI
-          vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
-          fail(vm_ref) unless vdi_ref
+            # Create the VDI
+            vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
+            fail(vm_ref) unless vdi_ref
 
-          # Attach the VDI to the VM
-          vbd_ref = create_vbd(vm_ref, vdi_ref, 0)
-          fail(vm_ref) unless vbd_ref
+            # Attach the VDI to the VM
+            # if its position is 0 set it bootable
+            vbd_ref = create_vbd(vm_ref, vdi_ref, position, position == 0)
+            fail(vm_ref) unless vbd_ref
+          end
+
 
           ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}"
           ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"

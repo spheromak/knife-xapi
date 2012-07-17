@@ -346,14 +346,15 @@ class Chef::Knife
 
 
     # create vbd and return a ref
-    def create_vbd(vm_ref, vdi_ref, position)
+    # defaults to bootable
+    def create_vbd(vm_ref, vdi_ref, position, boot=true)
       vbd_record = {
         "VM" => vm_ref,
         "VDI" => vdi_ref,
         "empty" => false,
         "other_config" => {"owner"=>""},
         "userdevice" => position.to_s,
-        "bootable" => true,
+        "bootable" => boot,
         "mode" => "RW",
         "qos_algorithm_type" => "",
         "qos_algorithm_params" => {},
