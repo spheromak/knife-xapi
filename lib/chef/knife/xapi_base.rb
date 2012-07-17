@@ -387,6 +387,14 @@ class Chef::Knife
       return xapi.VDI.get_all()
     end
 
+    def get_vdi_by_uuid(id)
+      return xapi.VDI.get_by_uuid(id)
+    end
+
+    def get_vdi_by_name_label(name)
+      return xapi.VDI.get_by_name_label(name)
+    end
+
     def print_vdi_info(vdi_ref)
       puts "#{h.color "VDI name: " + xapi.VDI.get_name_label(vdi_ref), :green}"
       puts "  -Description: " + xapi.VDI.get_name_description(vdi_ref)

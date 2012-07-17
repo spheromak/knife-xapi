@@ -101,9 +101,9 @@ class Chef
 
           vdis = [] 
           if config[:uuid]
-            vdis << xapi.VDI.get_by_uuid(vdi_name)
+            vdis << get_vdi_by_uuid(vdi_name)
           else
-            vdis << xapi.VDI.get_by_name_label(vdi_name)
+            vdis << get_vdi_by_name_label(vdi_name)
           end
           vdis.flatten! 
 
@@ -117,7 +117,7 @@ class Chef
             vdi = vdis.first
           end
 
-          vbds = xapi.VDI.get_VBDs(vdi)
+          vbds = get_vbds_from_vdi(vdi)
 
           if vbds.empty? 
             destroy_vdi(vdi)
