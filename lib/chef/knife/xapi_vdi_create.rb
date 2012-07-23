@@ -43,11 +43,11 @@ class Chef
 
       def run
         disk_name = @name_args[0]
-		if disk_name.nil?
-			puts "Error: No Disk Name specified..."
-			puts "Usage: " + banner
-			exit 1
-		end
+        if disk_name.nil?
+          puts "Error: No Disk Name specified..."
+          puts "Usage: " + banner
+          exit 1
+        end
 
         begin
           if locate_config_value(:xapi_sr)
@@ -61,25 +61,25 @@ class Chef
           end
           Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
 
-		  size = locate_config_value(:xapi_disk_size) 
+	    	  size = locate_config_value(:xapi_disk_size) 
 
-		  vdi_record = {
-			"name_label" => "#{disk_name}-root",
-			"name_description" => "Root disk for #{disk_name} created by knfie xapi",
-			"SR" => sr_ref,
-			"virtual_size" => input_to_bytes(size).to_s,
-			"type" => "system",
-			"sharable" => false,
-			"read_only" => false,
-			"other_config" => {},
-		  }
+          vdi_record = {
+            "name_label" => disk_name,
+            "name_description" => "#{disk_name} created by #{ENV['USER']}",
+            "SR" => sr_ref,
+            "virtual_size" => input_to_bytes(size).to_s,
+            "type" => "system",
+            "sharable" => false,
+            "read_only" => false,
+            "other_config" => {},
+          }
 
-		  # Async create the VDI
-		  task = xapi.Async.VDI.create(vdi_record)
-		  ui.msg "waiting for VDI Create.."
-		  vdi_ref = get_task_ref(task)
+          # Async create the VDI
+          task = xapi.Async.VDI.create(vdi_record)
+          ui.msg "waiting for VDI Create.."
+          vdi_ref = get_task_ref(task)
 
-          ui.msg "Disk Name:   #{ h.color( "#{disk_name}-root", :bold, :cyan)}"
+          ui.msg "Disk Name:   #{ h.color( disk_name, :bold, :cyan)}"
           ui.msg "Disk Size:   #{ h.color( size.to_s, :bold, :cyan)}"
 
         end
