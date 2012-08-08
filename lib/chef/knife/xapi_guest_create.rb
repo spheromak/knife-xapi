@@ -213,7 +213,11 @@ class Chef
         # get the template vm we are going to build from
         template_ref = find_template( locate_config_value(:xapi_vm_template) )
 
-        Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}"
+        # test
+        #puts :xapi_vm_template
+        #puts "#{Chef::Config[:knife][:xapi_vm_template]}"
+        ###################
+		Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}"
         task = xapi.Async.VM.clone(template_ref, fqdn)
         ui.msg "Waiting on Template Clone"
         vm_ref = get_task_ref(task)
@@ -283,7 +287,9 @@ class Chef
             # Attach the VDI to the VM
             # if its position is 0 set it bootable
             vbd_ref = create_vbd(vm_ref, vdi_ref, position, position == 0)
-            fail(vm_ref) unless vbd_ref
+            # test - matt  
+	        puts vbd_ref
+	        fail(vm_ref) unless vbd_ref
           end
 
 

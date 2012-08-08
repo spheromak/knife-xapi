@@ -344,7 +344,6 @@ class Chef::Knife
       end
     end
 
-
     # create vbd and return a ref
     # defaults to bootable
     def create_vbd(vm_ref, vdi_ref, position, boot=true)
@@ -365,7 +364,58 @@ class Chef::Knife
       task = xapi.Async.VBD.create(vbd_record)
       ui.msg "Waiting for VBD create"
       vbd_ref = get_task_ref(task)
+	 end
+
+   ### detach attach vdi - on going ################################  
+	 
+	 def detach_vdi(vbd_ref)
+	   task = xapi.Async.VBD.destroy(vbd_ref)
+	   print "Detach VDI\n"
+	   task_ref = get_task_ref(task)
+	 end
+
+	 def get_vbd_by_uuid(id)
+	  return xapi.VBD.get_by_uuid(id)
+	 end
+     
+     # return the selected item
+	 def user_select_detach(items)
+	   h.choose do |menu|
+	     menu.index  = :number
+	     menu.prompt = "Please Choose One:"
+	     menu.select_by =  :index_or_name
+	     items.each do |item|
+	       menu.choice item.to_sym do |command|
+	         ui.msg "Using: #{command}"
+	         selected = command.to_s
+	       end
+        end
+        menu.choice :exit do exit 1 end
+        end
     end
+
+    # create vbd and return a ref
+    # defaults to bootable
+	def create_vbd_attach(vm_ref, vdi_ref, position, mo)
+	   vbd_record = {
+	     "VM" => vm_ref,
+	     "VDI" => vdi_ref,
+	     "empty" => false,
+	     "other_config" => {"owner"=>""},
+         "userdevice" => position.to_s,
+	     "bootable" => false,
+	     "mode" => mo,
+	     "qos_algorithm_type" => "",
+	     "qos_algorithm_params" => {},
+	     "qos_supported_algorithms" => [],
+	     "type" => "Disk" }
+        task = xapi.Async.VBD.create(vbd_record)
+        ui.msg "Waiting for VBD create"
+        vbd_ref = get_task_ref(task)
+    end
+
+	 
+  #############################################################
 
     # try to get a guest ip and return it
     def get_guest_ip(vm_ref)
