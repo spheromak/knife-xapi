@@ -1,3 +1,4 @@
 knife-xapi.gemspec
 pkg/
 Gemfile.lock
+.swp

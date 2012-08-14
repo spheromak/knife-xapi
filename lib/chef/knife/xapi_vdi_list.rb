@@ -20,7 +20,6 @@
 
 
 require 'chef/knife/xapi_base'
-require 'pp'
 
 class Chef
   class Knife
@@ -29,32 +28,39 @@ class Chef
 
       banner "knife xapi vdi list"
 
+      option :vdi_name,
+        :short => "-N",
+        :long => "--vdi-name",
+        :default => false,
+        :description => "Indicates this is a vdi name not a guest name"
+
+
       def run 
-          # Get all VDIs known to the system
-          vdis = xapi.VDI.get_all()
-	      pp vdis
+        # Get all VDIs known to the system
+        name = @name_args[0]
 
-          puts "================================================"
-          for vdi_ in vdis do
-            puts "#{h.color "VDI name: " + xapi.VDI.get_name_label(vdi_), :green}"
-            puts "  -UUID: " + xapi.VDI.get_uuid(vdi_)
-            puts "  -Description: " + xapi.VDI.get_name_description(vdi_)
-            puts "  -Type: " + xapi.VDI.get_type(vdi_)
+        # if we were passed a guest name find its vdi's 
+        # otherwise do it for everything
+        vdis = Array.new
+        if name.nil? or name.empty?
+          vdis = xapi.VDI.get_all
 
-            vbds = xapi.VDI.get_VBDs(vdi_)
-            for vbd in vbds do
-              vm = xapi.VBD.get_VM(vbd)
-              state = xapi.VM.get_power_state(vm)
-              puts "    -VM name: " + xapi.VM.get_name_label(vm)
-              puts "    -VM state: " + state + "\n"
-            end
+        elsif config[:vdi_name]
+          vdis = xapi.VDI.get_by_name_label( name )
 
-            if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
-                puts "  No VM attached!"
-                #puts "  No VM attached! Use vdi delete --cleanup to delete this volume."
-            end
-            puts "================================================"
+        else
+          ref = xapi.VM.get_by_name_label( name ) 
+          vm = xapi.VM.get_record( ref.first )
+
+          vm["VBDs"].each do |vbd|
+            vdis << xapi.VBD.get_record( vbd )["VDI"]
           end
+        end
+
+        vdis.each do |vdi| 
+          print_vdi_info vdi
+        end
+
       end
     end
   end

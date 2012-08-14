@@ -23,60 +23,54 @@ require 'chef/knife/xapi_base'
 
 class Chef
   class Knife
-	class XapiVdiDetach < Knife
-	  require 'timeout'
-	  include Chef::Knife::XapiBase
+	  class XapiVdiDetach < Knife
+	    include Chef::Knife::XapiBase
 
-	  banner "knife xapi vdi detach NAME_LABEL (options)"
+	    banner "knife xapi vdi detach NAME_LABEL (options)"
 
-	  option :uuid,
-	    :short => "-U",
-	    :long => "--uuid",
-		:description => "Treat the label as a UUID not a name label"
+	    option :uuid,
+	      :short => "-U",
+	      :long => "--uuid",
+		    :description => "Treat the label as a UUID not a name label"
 	  
-	  def run
-	    vbd_name = @name_args[0]
+	    def run
+	      vbd_name = @name_args[0]
 
-		if vbd_name.nil?
-		  puts "Error: No VDI Name specified..."
-		  puts "Usage: " +banner
-		  exit 1
-		end
+		    if vbd_name.nil?
+		      ui.msg "Error: No VDI Name specified..."
+		      ui.msg "Usage: " +banner
+		      exit 1
+		    end
 		
-        vbds = []
-        
+        vdis = []  
         # detach vdi with VDI's UUID
-	    if config[:uuid]
-          #vbds << get_vbd_by_uuid(vbd_name)
-		  vdi_ref = xapi.VDI.get_by_uuid(vbd_name)
-		  vbds << xapi.VDI.get_VBDs(vdi_ref)
-	
+	      if config[:uuid]
+          vdis << xapi.VDI.get_by_uuid(vbd_name)
+        else
         # detach with VDI's Name 
-	    else
-          vdi_ref = get_vdi_by_name_label(vbd_name)
-	      
-	      if vdi_ref.empty?
-	        puts "VDI not found: #{h.color vbd_name, :red}"
-			exit 1
-		  # When multiple VDI matches
-	      elsif vdi_ref.length > 1
-			puts "Multiple VDI matches found use guest list if you are unsure"
-			vdi_temp = user_select_detach(vdi_ref)
+          vdis = xapi.VDI.get_by_name_label(vbd_name)
+	      end
+
+        if vdis.empty?
+	        ui.msg "VDI not found: #{h.color vbd_name, :red}"
+	    	  exit 1
+		    # When multiple VDI matches
+	      elsif vdis.length > 1
+			    ui.msg "Multiple VDI matches found use guest list if you are unsure"
+			    vdi_ref = user_select(vdis)
 	      else
-			vdi_temp = vdi_ref.first
-		  end
-							          
-          vbds <<  xapi.VDI.get_VBDs(vdi_temp)
-		    
-	    end
-        vbds.flatten!
-		vbd = vbds.first
+			    vdi_ref = vdis.first
+		    end
+			  
+        # Detach VDI	
+        if vdi_ref == :all
+          vdis.each{|vdi_ref| detach_vdi(vdi_ref)}
+        else
+          detach_vdi(vdi_ref)
+        end
         
-        # Detach the VDI #
-        detach_vdi(vbd)
-		  
+     end
 	  end
-	end
   end
 end
 

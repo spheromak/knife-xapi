@@ -64,6 +64,12 @@ class Chef::Knife
           :long => "--domain Name",
           :description => "the domain name for the guest",
           :proc => Proc.new { |key| Chef::Config[:knife][:domain] = key }
+
+        option :no_color,
+          :long => "--no-color",
+          :default => false,
+          :description => "Don't colorize the output"
+
       end
     end
 
@@ -366,57 +372,40 @@ class Chef::Knife
       vbd_ref = get_task_ref(task)
 	 end
 
-   ### detach attach vdi - on going ################################  
-	 
-	 def detach_vdi(vbd_ref)
-	   task = xapi.Async.VBD.destroy(vbd_ref)
-	   print "Detach VDI\n"
-	   task_ref = get_task_ref(task)
-	 end
-
-	 def get_vbd_by_uuid(id)
-	  return xapi.VBD.get_by_uuid(id)
-	 end
+	  #detach_vdi
+	  def detach_vdi(vdi_ref)
+	    vbd_refs = xapi.VDI.get_VBDs(vdi_ref)
      
-     # return the selected item
-	 def user_select_detach(items)
-	   h.choose do |menu|
-	     menu.index  = :number
-	     menu.prompt = "Please Choose One:"
-	     menu.select_by =  :index_or_name
-	     items.each do |item|
-	       menu.choice item.to_sym do |command|
-	         ui.msg "Using: #{command}"
-	         selected = command.to_s
-	       end
+      # more than one VBD, so we ned to find the vbd with the vdi
+      ref = nil
+      Chef::Log.debug "VBD Refs: #{vbd_refs.inspect}"
+      if vbd_refs.length > 1 
+        vbd_refs.each do |vbd|
+          record = xapi.VBD.get_record vbd
+          Chef::Log.debug "Checking VBD: #{vbd}, #{record["device"]}, #{record["VDI"]}==#{vdi_ref}"
+          if record["VDI"] == vdi_ref
+            ref = vbd
+            break
+          end
         end
-        menu.choice :exit do exit 1 end
-        end
-    end
+      else 
+        # if only vbd use it
+        ref = vbd_refs.first
+      end
 
-    # create vbd and return a ref
-    # defaults to bootable
-	def create_vbd_attach(vm_ref, vdi_ref, position, mo)
-	   vbd_record = {
-	     "VM" => vm_ref,
-	     "VDI" => vdi_ref,
-	     "empty" => false,
-	     "other_config" => {"owner"=>""},
-         "userdevice" => position.to_s,
-	     "bootable" => false,
-	     "mode" => mo,
-	     "qos_algorithm_type" => "",
-	     "qos_algorithm_params" => {},
-	     "qos_supported_algorithms" => [],
-	     "type" => "Disk" }
-        task = xapi.Async.VBD.create(vbd_record)
-        ui.msg "Waiting for VBD create"
-        vbd_ref = get_task_ref(task)
-    end
+      unless ref
+        raise ArgumentError, "We weren't able to find a VBD for that VDI: #{vdi_ref}"
+      end
+      
+      task = xapi.Async.VBD.destroy(ref)
+      ui.msg "Waiting for VDI detach"
+      task_ref = get_task_ref(task)
+	  end
 
-	 
-  #############################################################
-
+	  def get_vbd_by_uuid(id)
+	    xapi.VBD.get_by_uuid(id)
+	  end
+     
     # try to get a guest ip and return it
     def get_guest_ip(vm_ref)
       guest_ip = "unknown"
@@ -446,33 +435,62 @@ class Chef::Knife
       return xapi.VDI.get_by_name_label(name)
     end
 
-    def print_vdi_info(vdi_ref)
-      puts "#{h.color "VDI name: " + xapi.VDI.get_name_label(vdi_ref), :green}"
-      puts "  -Description: " + xapi.VDI.get_name_description(vdi_ref)
-      puts "  -Type: " + xapi.VDI.get_type(vdi_ref)
-    end
+    def color_kv(key, value, color=[:green, :cyan])
+      if config[:no_color]
+        color = [ :clear, :clear ]
+      end
+      ui.msg "#{h.color( key, color[0])} #{ h.color( value, color[1])}"
+    end 
 
-    def yes_no_prompt(str)
-      print str
-      choice = STDIN.gets
-
-      while !(choice.match(/^yes$|^no$/))
-        puts "Invalid input! Type \'yes\' or \'no\':"
-        choice = STDIN.gets
+    def print_vdi_info(vdi)
+      record = xapi.VDI.get_record vdi
+      color_kv "VDI Name: ", record['name_label']
+      color_kv "  UUID: ",  record['uuid'], [:magenta, :cyan]
+      color_kv "  Description: ", record['name_description'], [:magenta, :cyan]
+      color_kv "  Type: ", record['type'], [:magenta, :cyan]
+      color_kv "  Size (gb): ", record['virtual_size'].to_i.bytes.to_gb.to_s, [:magenta, :cyan]
+      color_kv "  Utilized (gb): ", record['physical_utilisation'].to_i.bytes.to_gb.to_s, [:magenta, :cyan]
+      record["VBDs"].each do |vbd|
+        vm = xapi.VBD.get_VM(vbd)
+        color_kv "    VM name: ",  xapi.VM.get_name_label(vm)
+        color_kv "    VM state: ",   "#{xapi.VM.get_power_state(vm) } \n"
       end
 
-      if choice.match('yes')
-        return true
-      else
-        return false
+      if record["VBDs"].length == 0 
+        ui.msg h.color "  No VM Attached", :red
+      end
+      
+      ui.msg ""
+    end
+
+    # return true (yes) false (no) 
+    # to the asked question
+    def yes_no?(msg)
+      answer = ui.ask( "#{msg} yes/no ? " ) do |res|
+        res.case = :down
+        res.validate = /y|n|yes|no/ 
+        res.responses[:not_valid] = "Use 'yes', 'no', 'y', 'n':"
+      end
+
+      case answer
+      when  "y", "yes"
+       true
+      when "n", "no"
+       false
       end
     end
 
     def destroy_vdi(vdi_ref)
+      vbds = get_vbds_from_vdi(vdi_ref)
+      unless vbds.empty? 
+        detach_vdi(vdi_ref)
+      end
       task = xapi.Async.VDI.destroy(vdi_ref)
       print "Destroying volume "
       puts "#{h.color xapi.VDI.get_name_label(vdi_ref), :cyan}"
       task_ref = get_task_ref(task)
     end
+
+
   end
 end
