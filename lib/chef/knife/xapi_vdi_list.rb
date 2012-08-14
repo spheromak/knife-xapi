@@ -20,7 +20,6 @@
 
 
 require 'chef/knife/xapi_base'
-require 'pp'
 
 class Chef
   class Knife
@@ -32,7 +31,6 @@ class Chef
       def run 
           # Get all VDIs known to the system
           vdis = xapi.VDI.get_all()
-	      pp vdis
 
           puts "================================================"
           for vdi_ in vdis do
