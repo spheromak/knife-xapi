@@ -28,17 +28,26 @@ class Chef
 
       banner "knife xapi vdi list"
 
+      option :vdi_name,
+        :short => "-N",
+        :long => "--vdi-name",
+        :default => false
+        :description => "Indicates this is a vdi name not a guest name",
+
+
       def run 
           # Get all VDIs known to the system
-          host_name = @name_args[0]
+          name = @name_args[0]
 
           # if we were passed a guest name find its vdi's 
           # otherwise do it for everything
           vdis = Array.new
-          if host_name.nil? or host_name.empty?
+          if name.nil? or name.empty?
             vdis = xapi.VDI.get_all
-          else 
-            ref = xapi.VM.get_by_name_label( host_name ) 
+          elsif config[:vdi_name]
+            vdis = xapi.VDI.get_by_name_label( name )
+          else
+            ref = xapi.VM.get_by_name_label( name ) 
             vm = xapi.VM.get_record( ref.first )
             vm["VBDs"].each do |vbd|
               vdis << xapi.VBD.get_record( vbd )["VDI"]
