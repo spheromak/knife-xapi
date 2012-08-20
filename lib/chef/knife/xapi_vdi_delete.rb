@@ -43,86 +43,84 @@ class Chef
         :long => "--interactive",
         :description => "Interactive clean-up of orphaned volumes"
 
-      def run 
-        if config[:interactive]
-          # Get all VDIs known to the system
-          vdis = get_all_vdis()
-          first = true
 
-          for vdi_ in vdis do
-            vbds = get_vbds_from_vdi(vdi_)
-            if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
-              if first
-                first = false
-              end
+      def interactive
+        # Get all VDIs known to the system
+        vdis = get_all_vdis()
+        first = true
 
-              print_vdi_info(vdi_)
-              ret = yes_no_prompt("  No VM attached! Do you want to destroy this volume? (Type \'yes\' or \'no\'): ")
-
-              if ret
-                destroy_vdi(vdi_)
-              end
+        for vdi_ in vdis do
+          vbds = get_vbds_from_vdi(vdi_)
+          if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
+            if first
+              first = false
             end
-          end
 
-        elsif config[:cleanup]
-          orphaned_vdis = []
-          vdis = get_all_vdis()
-
-          for vdi_ in vdis do
-            vbds = get_vbds_from_vdi(vdi_)
-            if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
-              orphaned_vdis << vdi_
-            end
-          end
-
-          for item in orphaned_vdis do
-            print_vdi_info(item)
-          end
-
-          unless orphaned_vdis.empty?
-            ret = yes_no_prompt("Do you want to destroy all these volumes? (Type \'yes\' or \'no\'): ")
-            if ret
-              for item in orphaned_vdis do
-                destroy_vdi(item)
-              end
-            end
-          end
-
-        else
-          vdi_name = @name_args[0]
-          if vdi_name.nil?
-            puts "Error: No VDI Name specified..."
-            puts "Usage: " + banner
-            exit 1
-          end
-
-          vdis = [] 
-          if config[:uuid]
-            vdis << get_vdi_by_uuid(vdi_name)
-          else
-            vdis << get_vdi_by_name_label(vdi_name)
-          end
-          vdis.flatten! 
-
-          if vdis.empty? 
-            puts "VDI not found: #{h.color vdi_name, :red}" 
-            exit 1
-          elsif vdis.length > 1
-            puts "Multiple VDI matches found. Use vdi list if you are unsure"
-            vdi = user_select(vdis)
-          else 
-            vdi = vdis.first
-          end
-
-          vbds = get_vbds_from_vdi(vdi)
-
-          if vbds.empty? 
-            destroy_vdi(vdi)
-          else
-            puts "ERROR! The VDI is still in use."
+            prinlt_vdi_info(vdi_)
+            destroy_vdi(vdi_) if yes_no?("Destroy this volume? ")
           end
         end
+      end
+
+      def vdi_cleanup
+        orphaned_vdis = []
+        vdis = get_all_vdis()
+
+        for vdi_ in vdis do
+          vbds = get_vbds_from_vdi(vdi_)
+          if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
+            orphaned_vdis << vdi_
+          end
+        end
+
+        orphaned_vdis.each { |item| print_vdi_info(item) }
+        unless orphaned_vdis.empty?
+          if yes_no?("Destroy all these volumes? ")
+            orphaned_vdis.each { |item| destroy_vdi(item) }
+          end
+        end
+      end
+
+      def run 
+        if config[:interactive]
+          interactive
+          return
+        elsif config[:cleanup]
+          vdi_cleanup
+          return
+        end
+
+        vdi_name = @name_args[0]
+        if vdi_name.nil?
+          puts "Error: No VDI Name specified..."
+          puts "Usage: " + banner
+          exit 1
+        end
+
+        vdis = [] 
+        if config[:uuid]
+          vdis << get_vdi_by_uuid(vdi_name)
+        else
+          vdis << get_vdi_by_name_label(vdi_name)
+        end
+        vdis.flatten! 
+
+        if vdis.empty? 
+          ui.msg "VDI not found: #{h.color vdi_name, :red}" 
+          exit 1
+        elsif vdis.length > 1
+          ui.msg "Multiple VDI matches found. Use vdi list if you are unsure"
+          vdi = user_select(vdis)
+        else 
+          vdi = vdis.first
+        end
+
+        if vdi == :all 
+          vdis.each {|vdi|  destroy_vdi(vdi)}
+        else 
+          destroy_vdi(vdi)
+        end
+
       end
     end
   end

@@ -31,32 +31,36 @@ class Chef
       option :vdi_name,
         :short => "-N",
         :long => "--vdi-name",
-        :default => false
-        :description => "Indicates this is a vdi name not a guest name",
+        :default => false,
+        :description => "Indicates this is a vdi name not a guest name"
 
 
       def run 
-          # Get all VDIs known to the system
-          name = @name_args[0]
+        # Get all VDIs known to the system
+        name = @name_args[0]
 
-          # if we were passed a guest name find its vdi's 
-          # otherwise do it for everything
-          vdis = Array.new
-          if name.nil? or name.empty?
-            vdis = xapi.VDI.get_all
-          elsif config[:vdi_name]
-            vdis = xapi.VDI.get_by_name_label( name )
-          else
-            ref = xapi.VM.get_by_name_label( name ) 
-            vm = xapi.VM.get_record( ref.first )
-            vm["VBDs"].each do |vbd|
-              vdis << xapi.VBD.get_record( vbd )["VDI"]
-            end
-          end
+        # if we were passed a guest name find its vdi's 
+        # otherwise do it for everything
+        vdis = Array.new
+        if name.nil? or name.empty?
+          vdis = xapi.VDI.get_all
 
-          vdis.each do |vdi| 
-            print_vdi_info vdi
+        elsif config[:vdi_name]
+          vdis = xapi.VDI.get_by_name_label( name )
+
+        else
+          ref = xapi.VM.get_by_name_label( name ) 
+          vm = xapi.VM.get_record( ref.first )
+
+          vm["VBDs"].each do |vbd|
+            vdis << xapi.VBD.get_record( vbd )["VDI"]
           end
+        end
+
+        vdis.each do |vdi| 
+          print_vdi_info vdi
+        end
+
       end
     end
   end

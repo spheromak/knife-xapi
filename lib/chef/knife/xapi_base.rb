@@ -374,21 +374,32 @@ class Chef::Knife
 
 	  #detach_vdi
 	  def detach_vdi(vdi_ref)
-	    vbds = xapi.VDI.get_VBDs(vdi_ref)
-      if vbd_ref.length > 1 
-        choice = user_select(vbds)
-      end
+	    vbd_refs = xapi.VDI.get_VBDs(vdi_ref)
      
-      vbd_refs == [choice] 
-      if choice == :all
-        vbd_refs == vbds
+      # more than one VBD, so we ned to find the vbd with the vdi
+      ref = nil
+      Chef::Log.debug "VBD Refs: #{vbd_refs.inspect}"
+      if vbd_refs.length > 1 
+        vbd_refs.each do |vbd|
+          record = xapi.VBD.get_record vbd
+          Chef::Log.debug "Checking VBD: #{vbd}, #{record["device"]}, #{record["VDI"]}==#{vdi_ref}"
+          if record["VDI"] == vdi_ref
+            ref = vbd
+            break
+          end
+        end
+      else 
+        # if only vbd use it
+        ref = vbd_refs.first
       end
 
-      vbd_refs.each do |ref| 
-        task = xapi.Async.VBD.destroy(ref)
-        ui.msg "Waiting for VDI detach"
-        task_ref = get_task_ref(task)
+      unless ref
+        raise ArgumentError, "We weren't able to find a VBD for that VDI: #{vdi_ref}"
       end
+      
+      task = xapi.Async.VBD.destroy(ref)
+      ui.msg "Waiting for VDI detach"
+      task_ref = get_task_ref(task)
 	  end
 
 	  def get_vbd_by_uuid(id)
@@ -452,27 +463,34 @@ class Chef::Knife
       ui.msg ""
     end
 
-    def yes_no_prompt(str)
-      print str
-      choice = STDIN.gets
-
-      while !(choice.match(/^yes$|^no$/))
-        puts "Invalid input! Type \'yes\' or \'no\':"
-        choice = STDIN.gets
+    # return true (yes) false (no) 
+    # to the asked question
+    def yes_no?(msg)
+      answer = ui.ask( "#{msg} yes/no ? " ) do |res|
+        res.case = :down
+        res.validate = /y|n|yes|no/ 
+        res.responses[:not_valid] = "Use 'yes', 'no', 'y', 'n':"
       end
 
-      if choice.match('yes')
-        return true
-      else
-        return false
+      case answer
+      when  "y", "yes"
+       true
+      when "n", "no"
+       false
       end
     end
 
     def destroy_vdi(vdi_ref)
+      vbds = get_vbds_from_vdi(vdi_ref)
+      unless vbds.empty? 
+        detach_vdi(vdi_ref)
+      end
       task = xapi.Async.VDI.destroy(vdi_ref)
       print "Destroying volume "
       puts "#{h.color xapi.VDI.get_name_label(vdi_ref), :cyan}"
       task_ref = get_task_ref(task)
     end
+
+
   end
 end
