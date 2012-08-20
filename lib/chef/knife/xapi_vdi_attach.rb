@@ -32,6 +32,11 @@ class Chef
         :short => "-U",
         :long => "--uuid",
         :description => "Treat the label as a UUID not a name label"
+
+      option :bootable,
+        :long => "--boot",
+        :default => false,
+        :description => "Set the new disk as bootable (default: false)"
 	  
       def run
 	      vm_name = @name_args[0]
@@ -67,18 +72,16 @@ class Chef
 	      end
 	      
 		    vm_ref = vms.first
-        
-       # vbds = xapi.VDI.get_VBDs(vdi_ref)
-        position = xapi.VM.get_VBDs(vm_ref).length
+        position = xapi.VM.get_VBDs(vm_ref).length 
 
         # Attach intended VDI to specific VM
         if vdi_ref == :all
-          vdis.each {|vdi_ref|
-            create_vbd(vm_ref, vdi_ref, position, position == 0)
+          vdis.each do |vdi_ref|
+            create_vbd(vm_ref, vdi_ref, position, config[:boot] )
             position += 1
-          }
+          end
         else 
-          create_vbd(vm_ref, vdi_ref, position, position == 0)
+          create_vbd(vm_ref, vdi_ref, position, config[:boot])
         end
 
 	    end	
