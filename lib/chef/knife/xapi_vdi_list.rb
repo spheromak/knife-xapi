@@ -30,28 +30,23 @@ class Chef
 
       def run 
           # Get all VDIs known to the system
-          vdis = xapi.VDI.get_all()
+          host_name = @name_args[0]
 
-          puts "================================================"
-          for vdi_ in vdis do
-            puts "#{h.color "VDI name: " + xapi.VDI.get_name_label(vdi_), :green}"
-            puts "  -UUID: " + xapi.VDI.get_uuid(vdi_)
-            puts "  -Description: " + xapi.VDI.get_name_description(vdi_)
-            puts "  -Type: " + xapi.VDI.get_type(vdi_)
-
-            vbds = xapi.VDI.get_VBDs(vdi_)
-            for vbd in vbds do
-              vm = xapi.VBD.get_VM(vbd)
-              state = xapi.VM.get_power_state(vm)
-              puts "    -VM name: " + xapi.VM.get_name_label(vm)
-              puts "    -VM state: " + state + "\n"
+          # if we were passed a guest name find its vdi's 
+          # otherwise do it for everything
+          vdis = Array.new
+          if host_name.nil? or host_name.empty?
+            vdis = xapi.VDI.get_all
+          else 
+            ref = xapi.VM.get_by_name_label( host_name ) 
+            vm = xapi.VM.get_record( ref.first )
+            vm["VBDs"].each do |vbd|
+              vdis << xapi.VBD.get_record( vbd )["VDI"]
             end
+          end
 
-            if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
-                puts "  No VM attached!"
-                #puts "  No VM attached! Use vdi delete --cleanup to delete this volume."
-            end
-            puts "================================================"
+          vdis.each do |vdi| 
+            print_vdi_info vdi
           end
       end
     end

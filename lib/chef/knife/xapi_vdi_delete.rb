@@ -53,7 +53,6 @@ class Chef
             vbds = get_vbds_from_vdi(vdi_)
             if vbds.empty? and xapi.VDI.get_type(vdi_).match('system')
               if first
-                puts "================================================"
                 first = false
               end
 
@@ -63,7 +62,6 @@ class Chef
               if ret
                 destroy_vdi(vdi_)
               end
-              puts "================================================"
             end
           end
 

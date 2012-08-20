@@ -64,6 +64,12 @@ class Chef::Knife
           :long => "--domain Name",
           :description => "the domain name for the guest",
           :proc => Proc.new { |key| Chef::Config[:knife][:domain] = key }
+
+        option :no_color,
+          :long => "--no-color",
+          :default => false,
+          :description => "Don't colorize the output"
+
       end
     end
 
@@ -418,10 +424,32 @@ class Chef::Knife
       return xapi.VDI.get_by_name_label(name)
     end
 
-    def print_vdi_info(vdi_ref)
-      puts "#{h.color "VDI name: " + xapi.VDI.get_name_label(vdi_ref), :green}"
-      puts "  -Description: " + xapi.VDI.get_name_description(vdi_ref)
-      puts "  -Type: " + xapi.VDI.get_type(vdi_ref)
+    def color_kv(key, value, color=[:green, :cyan])
+      if config[:no_color]
+        color = [ :clear, :clear ]
+      end
+      ui.msg "#{h.color( key, color[0])} #{ h.color( value, color[1])}"
+    end 
+
+    def print_vdi_info(vdi)
+      record = xapi.VDI.get_record vdi
+      color_kv "VDI Name: ", record['name_label']
+      color_kv "  UUID: ",  record['uuid'], [:magenta, :cyan]
+      color_kv "  Description: ", record['name_description'], [:magenta, :cyan]
+      color_kv "  Type: ", record['type'], [:magenta, :cyan]
+      color_kv "  Size (gb): ", record['virtual_size'].to_i.bytes.to_gb.to_s, [:magenta, :cyan]
+      color_kv "  Utilized (gb): ", record['physical_utilisation'].to_i.bytes.to_gb.to_s, [:magenta, :cyan]
+      record["VBDs"].each do |vbd|
+        vm = xapi.VBD.get_VM(vbd)
+        color_kv "    VM name: ",  xapi.VM.get_name_label(vm)
+        color_kv "    VM state: ",   "#{xapi.VM.get_power_state(vm) } \n"
+      end
+
+      if record["VBDs"].length == 0 
+        ui.msg h.color "  No VM Attached", :red
+      end
+      
+      ui.msg ""
     end
 
     def yes_no_prompt(str)
