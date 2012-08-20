@@ -50,8 +50,14 @@ class Chef
 		    end
 
         # Get VM's ref from its name label 
-		    vms = xapi.VM.get_by_name_label(vm_name)
-  
+        vm_ref = xapi.VM.get_by_name_label(vm_name)
+        if vm_ref.empty?
+          ui.msg ui.color "Could not find a vm named #{vm_name}", :red
+          exit 1
+        end
+        vm_ref = vm_ref.shift
+
+
 	      # Get VDI's ref from its name label or UUID
 	      vdis = [] 
         if config[:uuid]
@@ -64,15 +70,16 @@ class Chef
           ui.msg "VDI not found: #{h.color vdi_name, :red}"
           exit 1  
         # When multiple VDI matches
+        Chef::Log.debug "VDI Length: #{vdis.inspect}\nType:#{vdi.class}" 
         elsif vdis.length > 1
 	        ui.msg "Multiple VDI matches found use guest list if you are unsure"
 		      vdi_ref = user_select(vdis)
 	      else
 			    vdi_ref = vdis.first
 	      end
-	      
-		    vm_ref = vms.first
-        position = xapi.VM.get_VBDs(vm_ref).length 
+	     
+
+        position = xapi.VM.get_VBDs(vm_ref).length
 
         # Attach intended VDI to specific VM
         if vdi_ref == :all
