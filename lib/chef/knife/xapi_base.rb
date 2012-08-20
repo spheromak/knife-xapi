@@ -366,13 +366,23 @@ class Chef::Knife
       vbd_ref = get_task_ref(task)
 	 end
 
-	  #deetach_vdi
+	  #detach_vdi
 	  def detach_vdi(vdi_ref)
 	    vbds = xapi.VDI.get_VBDs(vdi_ref)
-      vbd_ref = vbds.first
-      task = xapi.Async.VBD.destroy(vbd_ref)
-	    ui.msg "Waiting for VDI detach"
-	    task_ref = get_task_ref(task)
+      if vbd_ref.length > 1 
+        choice = user_select(vbds)
+      end
+     
+      vbd_refs == [choice] 
+      if choice == :all
+        vbd_refs == vbds
+      end
+
+      vbd_refs.each do |ref| 
+        task = xapi.Async.VBD.destroy(ref)
+        ui.msg "Waiting for VDI detach"
+        task_ref = get_task_ref(task)
+      end
 	  end
 
 	  def get_vbd_by_uuid(id)
