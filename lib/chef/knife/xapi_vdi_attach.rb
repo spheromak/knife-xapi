@@ -33,7 +33,7 @@ class Chef
         :long => "--uuid",
         :description => "Treat the label as a UUID not a name label"
 
-      option :bootable,
+      option :boot,
         :long => "--boot",
         :default => false,
         :description => "Set the new disk as bootable (default: false)"
