@@ -212,8 +212,8 @@ class Chef
 
         # get the template vm we are going to build from
         template_ref = find_template( locate_config_value(:xapi_vm_template) )
-
-		Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}"
+      
+		    Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan )}"
         task = xapi.Async.VM.clone(template_ref, fqdn)
         ui.msg "Waiting on Template Clone"
         vm_ref = get_task_ref(task)
@@ -226,7 +226,18 @@ class Chef
 
           # configure the install repo
           repo = locate_config_value(:install_repo)
-          xapi.VM.set_other_config(vm_ref, { "install-repository" => repo } )
+
+          # make sure we don't clobber existing params
+          other_config = Hash.new 
+          record = xapi.VM.get_record(vm_ref)
+          if record.has_key? "other_config"
+            other_config = record["other_config"] 
+          end
+          other_config["install-repository"] = repo
+          # for some reason the deb disks template is wonkey and has weird entry here
+          other_config.delete_if {|k,v| k=="disks"} 
+          Chef::Log.debug "Other_config: #{other_config.inspect}"
+          xapi.VM.set_other_config(vm_ref, other_config)
 
           cpus = locate_config_value( :xapi_cpus ).to_s
 
