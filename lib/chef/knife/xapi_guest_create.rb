@@ -272,6 +272,7 @@ class Chef
             end
           end
 
+          sr_ref = nil
           if locate_config_value(:xapi_sr)
             sr_ref = get_sr_by_name( locate_config_value(:xapi_sr) )
           else
