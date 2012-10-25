@@ -256,6 +256,8 @@ class Chef
           # if no hostname param set hostname to given vm name
           boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/)
           # if domainname is supplied we put that in there as well
+          # ubuntu/debian wants domain rhat wants dnsdomain
+          boot_args << " domain=#{domainname}" unless boot_args.match(/domain=.+\s?/)
           boot_args << " dnsdomain=#{domainname}" unless boot_args.match(/dnsdomain=.+\s?/)
 
           xapi.VM.set_PV_args( vm_ref, boot_args )
