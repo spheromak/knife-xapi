@@ -1,3 +1,3 @@
 module KnifeXenserver
-  VERSION = "0.4.4-pre"
+  VERSION = "0.4.5.pre"
 end
