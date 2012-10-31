@@ -1,0 +1,3 @@
+I've decided to pull in xenapi with ssl support instead of using the external gem that still has no ssl verification options
+
+if the upstream does implemnt some version of this we can adjust

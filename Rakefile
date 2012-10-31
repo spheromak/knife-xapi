@@ -35,7 +35,6 @@ Jeweler::Tasks.new do |gem|
   gem.homepage = "https://github.com/spheromak/knife-xapi"
 
   gem.add_dependency "chef", ">= 0.9.14"
-  gem.add_dependency "xenapi"
   gem.add_dependency "highline"
   gem.add_dependency "units"
   gem.require_path = 'lib'

@@ -74,6 +74,11 @@ class Chef
         :description => "You can add more boot options to the vm e.g.: \"ks='http://foo.local/ks'\"",
         :proc => Proc.new { |key| Chef::Config[:knife][:kernel_params] = key }
 
+      option :xapi_skip_disk,
+        :long => "--xapi-skip-disk",
+        :proc =>  Proc.new { |key| Chef::Config[:knife][:xapi_skip_disk] = key },
+        :description => "Don't try to add disks to the new VM"
+
       option :xapi_disk_size,
         :short => "-D Size of disk. 1g 512m etc",
         :long  =>  "--xapi-disk-size",
@@ -256,6 +261,8 @@ class Chef
           # if no hostname param set hostname to given vm name
           boot_args << " hostname=#{server_name}" unless boot_args.match(/hostname=.+\s?/)
           # if domainname is supplied we put that in there as well
+          # ubuntu/debian wants domain rhat wants dnsdomain
+          boot_args << " domain=#{domainname}" unless boot_args.match(/domain=.+\s?/)
           boot_args << " dnsdomain=#{domainname}" unless boot_args.match(/dnsdomain=.+\s?/)
 
           xapi.VM.set_PV_args( vm_ref, boot_args )
@@ -270,40 +277,46 @@ class Chef
             end
           end
 
-          if locate_config_value(:xapi_sr)
-            sr_ref = get_sr_by_name( locate_config_value(:xapi_sr) )
-          else
-            sr_ref = find_default_sr
+          unless locate_config_value(:xapi_skip_disk)
+            sr_ref = nil
+            if locate_config_value(:xapi_sr)
+              sr_ref = get_sr_by_name( locate_config_value(:xapi_sr) )
+            else
+              sr_ref = find_default_sr
+            end
+
+            if sr_ref.nil?
+              ui.error "SR specified not found or can't be used Aborting"
+              fail(vm_ref) if sr_ref.nil?
+            end
+            Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
+       
+
+            disk_size = locate_config_value(:xapi_disk_size)
+            # setup disks 
+            if disk_size != nil and disk_size.to_i > 0
+              # when a template already has disks, we decide the position number based on it. 
+              position = xapi.VM.get_VBDs(vm_ref).length 
+
+              # Create the VDI
+              vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
+              fail(vm_ref) unless vdi_ref
+
+              # Attach the VDI to the VM
+              # if its position is 0 set it bootable
+              position == 0 ?  bootable=true : bootable=false
+
+              vbd_ref = create_vbd(vm_ref, vdi_ref, position, bootable)
+              fail(vm_ref) unless vbd_ref
+            end
           end
-
-          if sr_ref.nil?
-            ui.error "SR specified not found or can't be used Aborting"
-            fail(vm_ref) if sr_ref.nil?
-          end
-          Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
-        
-          # setup disks 
-          if locate_config_value(:xapi_disk_size)
-            # when a template already has disks, we decide the position number based on it. 
-	    	    position = xapi.VM.get_VBDs(vm_ref).length
-
-            # Create the VDI
-            vdi_ref = create_vdi("#{server_name}-root", sr_ref, locate_config_value(:xapi_disk_size) )
-            fail(vm_ref) unless vdi_ref
-
-            # Attach the VDI to the VM
-            # if its position is 0 set it bootable
-            vbd_ref = create_vbd(vm_ref, vdi_ref, position, position == 0)
-	          fail(vm_ref) unless vbd_ref
-          end
-
 
           ui.msg "Provisioning new Guest: #{h.color(fqdn, :bold, :cyan )}"
           ui.msg "Boot Args: #{h.color boot_args,:bold, :cyan}"
           ui.msg "Install Repo: #{ h.color(repo,:bold, :cyan)}"
           ui.msg "Memory: #{ h.color( locate_config_value(:xapi_mem).to_s, :bold, :cyan)}"
           ui.msg "CPUs:   #{ h.color( locate_config_value(:xapi_cpus).to_s, :bold, :cyan)}"
-          ui.msg "Disk:   #{ h.color( locate_config_value(:xapi_disk_size).to_s, :bold, :cyan)}"
+          ui.msg "Disk:   #{ h.color( disk_size.to_s, :bold, :cyan)}"
           provisioned = xapi.VM.provision(vm_ref)
 
           ui.msg "Starting new Guest #{h.color( provisioned, :cyan)} "

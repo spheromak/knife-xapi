@@ -15,10 +15,12 @@ Config options are extendable in the knife.rb the folowing config options can be
 * __knife[:xapi_vm_template]__ Set a default template to be used when creating Guests
 * __knife[:install_repo]__ The install repo config option to set when using Xen builtin templates
 * __knife[:xapi_sr]__ The Storage Repository to provision from, uses pool/hypervisor default when not set
-* __knife[:xapi_disk_size]__ Default VM disk size (8g if not specified)
+* __knife[:xapi_disk_size]__ Default VM disk size (8g if not specified)a
+* __knife[:xapi_skip_disk]__ Skip adding any aditional disk to the vm. 
 * __knife[:xapi_cpus]__ The Default CPUs to provision for guests (2 if not specified)
 * __knife[:xapi_mem]__  The Defaul ammount of Memory  for guests (1g if not specified)
 * __knife[:kernel_params]__ Optional Boot paramaters to pass to the guest 
+* __knife[:xapi_ssl_verify]__ Enable SSL Cert verification. Disabled due to xenserver not having valid certs on xapi
 
 ### These options Controll xapi guest create bootstrap
 
