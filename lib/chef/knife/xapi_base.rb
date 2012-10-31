@@ -21,10 +21,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+unless Kernel.respond_to?(:require_relative)
+  module Kernel
+    def require_relative(path)
+      require File.join(File.dirname(caller[0]), path.to_str)
+    end
+  end
+end
+
 
 require 'chef/knife'
 require 'units/standard'
-require 'xenapi'
+
+require_relative '../../xenapi/xenapi.rb'
 
 class Chef::Knife
     module XapiBase
@@ -35,7 +44,7 @@ class Chef::Knife
       includer.class_eval do
 
         deps do
-          require 'xenapi'
+          require_relative '../../xenapi/xenapi.rb'
           require 'highline'
           require 'highline/import'
           require 'readline'
@@ -70,6 +79,11 @@ class Chef::Knife
           :default => false,
           :description => "Don't colorize the output"
 
+        option :ssl_verify,
+          :long => "--ssl-verify",
+          :default => false,
+          :description => "Enable SSL cert verification, Disabled by defaul because xenservers don't ship with proper certs"
+
       end
     end
 
@@ -100,7 +114,9 @@ class Chef::Knife
       @xapi ||= begin
 
         ui.fatal "Must provide a xapi host with --host "unless locate_config_value(:xapi_host)
-        session = XenApi::Client.new(  locate_config_value(:xapi_host) )
+        verify = :verify_none
+        verify = :verify_peer if locate_config_value(:ssl_verify) == true
+        session = XenApi::Client.new(  locate_config_value(:xapi_host), 10, verify )
 
         # get the password from the user
         password =  locate_config_value(:xapi_password) || nil
@@ -375,11 +391,11 @@ class Chef::Knife
 	  #detach_vdi
 	  def detach_vdi(vdi_ref)
 	    vbd_refs = xapi.VDI.get_VBDs(vdi_ref)
-     
+
       # more than one VBD, so we ned to find the vbd with the vdi
       ref = nil
       Chef::Log.debug "VBD Refs: #{vbd_refs.inspect}"
-      if vbd_refs.length > 1 
+      if vbd_refs.length > 1
         vbd_refs.each do |vbd|
           record = xapi.VBD.get_record vbd
           Chef::Log.debug "Checking VBD: #{vbd}, #{record["device"]}, #{record["VDI"]}==#{vdi_ref}"
@@ -388,7 +404,7 @@ class Chef::Knife
             break
           end
         end
-      else 
+      else
         # if only vbd use it
         ref = vbd_refs.first
       end
@@ -396,7 +412,7 @@ class Chef::Knife
       unless ref
         raise ArgumentError, "We weren't able to find a VBD for that VDI: #{vdi_ref}"
       end
-      
+
       task = xapi.Async.VBD.destroy(ref)
       ui.msg "Waiting for VDI detach"
       task_ref = get_task_ref(task)
@@ -405,7 +421,7 @@ class Chef::Knife
 	  def get_vbd_by_uuid(id)
 	    xapi.VBD.get_by_uuid(id)
 	  end
-     
+
     # try to get a guest ip and return it
     def get_guest_ip(vm_ref)
       guest_ip = "unknown"
@@ -440,7 +456,7 @@ class Chef::Knife
         color = [ :clear, :clear ]
       end
       ui.msg "#{h.color( key, color[0])} #{ h.color( value, color[1])}"
-    end 
+    end
 
     def print_vdi_info(vdi)
       record = xapi.VDI.get_record vdi
@@ -456,19 +472,19 @@ class Chef::Knife
         color_kv "    VM state: ",   "#{xapi.VM.get_power_state(vm) } \n"
       end
 
-      if record["VBDs"].length == 0 
+      if record["VBDs"].length == 0
         ui.msg h.color "  No VM Attached", :red
       end
-      
+
       ui.msg ""
     end
 
-    # return true (yes) false (no) 
+    # return true (yes) false (no)
     # to the asked question
     def yes_no?(msg)
       answer = ui.ask( "#{msg} yes/no ? " ) do |res|
         res.case = :down
-        res.validate = /y|n|yes|no/ 
+        res.validate = /y|n|yes|no/
         res.responses[:not_valid] = "Use 'yes', 'no', 'y', 'n':"
       end
 
@@ -482,7 +498,7 @@ class Chef::Knife
 
     def destroy_vdi(vdi_ref)
       vbds = get_vbds_from_vdi(vdi_ref)
-      unless vbds.empty? 
+      unless vbds.empty?
         detach_vdi(vdi_ref)
       end
       task = xapi.Async.VDI.destroy(vdi_ref)
