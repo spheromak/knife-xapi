@@ -79,8 +79,8 @@ class Chef::Knife
           :default => false,
           :description => "Don't colorize the output"
 
-        option :ssl_verify,
-          :long => "--ssl-verify",
+        option :xapi_ssl_verify,
+          :long => "--xapi-ssl-verify",
           :default => false,
           :description => "Enable SSL cert verification, Disabled by defaul because xenservers don't ship with proper certs"
 
@@ -115,7 +115,7 @@ class Chef::Knife
 
         ui.fatal "Must provide a xapi host with --host "unless locate_config_value(:xapi_host)
         verify = :verify_none
-        verify = :verify_peer if locate_config_value(:ssl_verify) == true
+        verify = :verify_peer if locate_config_value(:xapi_ssl_verify) == true
         session = XenApi::Client.new(  locate_config_value(:xapi_host), 10, verify )
 
         # get the password from the user
