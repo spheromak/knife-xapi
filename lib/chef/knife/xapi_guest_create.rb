@@ -320,9 +320,7 @@ class Chef
           provisioned = xapi.VM.provision(vm_ref)
 
           ui.msg "Starting new Guest #{h.color( provisioned, :cyan)} "
-          task = xapi.Async.VM.start(vm_ref, false, true)
-          wait_on_task(task)
-          ui.msg( "#{ h.color "OK!", :green}" )
+          start(vm_ref)
 
           exit 0 unless locate_config_value(:run_list)
         rescue Exception => e
