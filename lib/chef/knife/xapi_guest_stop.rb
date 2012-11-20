@@ -26,7 +26,7 @@ class Chef
     class XapiGuestStop < Knife
       include Chef::Knife::XapiBase
 
-      banner "knife xapi guest start"
+      banner "knife xapi guest stop"
 
       include Chef::Knife::XapiVmSelect
 
