@@ -331,8 +331,10 @@ class Chef
           fail(vm_ref)
         end
 
-        if locate_config_value(:run_list).empty? or ! locate_config_value(:template_file)
-          exit 0
+        if locate_config_value(:run_list).empty?
+          unless ( locate_config_value(:template_file) or locate_config_value(:bootstrap_template) )
+            exit 0
+          end
         end
 
         guest_addr = wait_for_guest_ip(vm_ref)
