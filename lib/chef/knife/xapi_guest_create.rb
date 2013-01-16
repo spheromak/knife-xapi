@@ -37,7 +37,7 @@ class Chef
         :xapi_disk_size => "8g",
         :xapi_cpus => "1",
         :xapi_mem => "1g",
-        :bootstrap_template => "ubuntu10.04-gems",
+        :bootstrap_template => "chef-full",
         :template_file => false,
         :run_list => [],
         :json_attributes => {}
