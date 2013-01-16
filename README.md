@@ -88,6 +88,12 @@ If you want to get the OpaqueRef, and UUID add -i or --show-id.
     dhcp01.local               Running      10.4.1.143      
     jn_test.local              Running      10.4.1.162  
 
+## Start/Stop Guest
+You can start/stop any instance with.. start and stop commands
+
+    knife xapi guest stop jn_test.local
+    knife xapi guest start jn_test.local
+
 ## VDI Create
 Create a disk on the xenserver with the specified size and name
 
