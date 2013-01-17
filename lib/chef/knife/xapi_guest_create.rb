@@ -37,7 +37,7 @@ class Chef
         :xapi_disk_size => "8g",
         :xapi_cpus => "1",
         :xapi_mem => "1g",
-        :bootstrap_template => "ubuntu10.04-gems",
+        :bootstrap_template => "chef-full",
         :template_file => false,
         :run_list => [],
         :json_attributes => {}
@@ -320,9 +320,7 @@ class Chef
           provisioned = xapi.VM.provision(vm_ref)
 
           ui.msg "Starting new Guest #{h.color( provisioned, :cyan)} "
-          task = xapi.Async.VM.start(vm_ref, false, true)
-          wait_on_task(task)
-          ui.msg( "#{ h.color "OK!", :green}" )
+          start(vm_ref)
 
           exit 0 unless locate_config_value(:run_list)
         rescue Exception => e
@@ -333,8 +331,10 @@ class Chef
           fail(vm_ref)
         end
 
-        if locate_config_value(:run_list).empty? or ! locate_config_value(:template_file)
-          exit 0
+        if locate_config_value(:run_list).empty?
+          unless ( locate_config_value(:template_file) or locate_config_value(:bootstrap_template) )
+            exit 0
+          end
         end
 
         guest_addr = wait_for_guest_ip(vm_ref)

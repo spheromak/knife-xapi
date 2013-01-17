@@ -507,6 +507,38 @@ class Chef::Knife
       task_ref = get_task_ref(task)
     end
 
+   
+    def get_host_ref(hostname)
+      xapi.host.get_all.each do |ref|
+        name = xapi.host.get_name_label ref
+        return ref if hostname == name
+      end
+      nil
+    end
+
+    def start(vm_ref, host=nil)
+      if host
+        host_ref = get_host_ref(host)
+        unless host_ref
+          ui.msg "Host not found #{host}"
+          exit 1
+        end
+        ui.msg( "Starting #{vm_ref} on #{host}" )
+        task = xapi.Async.VM.start_on(vm_ref, host_ref, false, true)
+      else
+        ui.msg( "Starting #{vm_ref} " )
+        task = xapi.Async.VM.start(vm_ref, false, true)
+      end
+      wait_on_task(task)
+      ui.msg( "#{ h.color "OK!", :green}" )
+    end
+
+    def stop(vm_ref)
+      ui.msg( "Stopping #{vm_ref}" )
+      task = xapi.Async.VM.clean_shutdown(vm_ref)
+      wait_on_task(task)
+      ui.msg( "#{ h.color "OK!", :green}" )
+    end
 
   end
 end
