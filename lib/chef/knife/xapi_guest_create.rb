@@ -183,6 +183,24 @@ class Chef
       end
 
       def wait_for_guest_ip(vm_ref)
+        guest_ip = get_guest_ip(vm_ref)
+        if pingable?(guest_ip)
+          ui.msg "found guest_ip = #{guest_ip}"
+          return guest_ip
+        else
+          ui.msg "#{guest_ip} is not pingable, trying to get guest ip again"
+          guest_ip = get_guest_ip(vm_ref)
+          ui.msg "found guest_ip = #{guest_ip}"
+          return guest_ip
+        end
+      end
+
+      def pingable?(guest_ip, timeout=5)
+        sleep(20)
+        system "ping -c 1 -t #{timeout} #{guest_ip} >/dev/null"
+      end
+
+      def get_guest_ip(vm_ref)
         begin
           timeout( locate_config_value(:ping_timeout).to_i ) do
             ui.msg "Waiting for guest ip address"
