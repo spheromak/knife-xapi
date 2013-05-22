@@ -479,6 +479,12 @@ class Chef::Knife
       ui.msg ""
     end
 
+    def print_vif_info(vif)
+      record = xapi.VIF.get_record vif
+      PP.pp record
+      puts ""
+    end
+
     # return true (yes) false (no)
     # to the asked question
     def yes_no?(msg)
