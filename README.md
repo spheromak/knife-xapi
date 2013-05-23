@@ -130,6 +130,14 @@ Report on xapi VDI's
           -VM name: chef01.mkd.ktc
           -VM state: Running
 
+## Net list
+Output info on host/pool networks lists the MTU, the extra info and name of the network. 
+
+    Name:  vlan1120.stage
+      Info:  255.255.255.0 : 10.33.89.1-10.33.89.254
+       MTU:  1500
+      UUID:  73f6f18f-c1d9-664b-d4bb-7673ea0fc2a1
+
 # Help
 Every command should accept --help and display arguments that it accepts (as all knife plugins do) 
 
