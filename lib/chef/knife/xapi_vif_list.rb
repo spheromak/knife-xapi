@@ -42,7 +42,7 @@ class Chef
         # otherwise do it for everything
         vifs = Array.new
         if name.nil? or name.empty?
-          vifs = xapi.VIF.get_all
+          vifs = xapi.VIF.getAllRecords
 
         elsif config[:vif_name]
           vdis = xapi.VIF.get_by_name_label( name )

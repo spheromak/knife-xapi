@@ -479,10 +479,9 @@ class Chef::Knife
       ui.msg ""
     end
 
-    def print_vif_info(vif)
-      record = xapi.VIF.get_record vif
-      PP.pp record
+    def print_record(record)
       puts ""
+      PP.pp record
     end
 
     # return true (yes) false (no)
