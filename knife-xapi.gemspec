@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "knife-xapi"
-  s.version = "0.5.1"
+  s.version = "0.5.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jesse Nelson"]
-  s.date = "2013-04-12"
+  s.date = "2013-05-23"
   s.description = "Xen API Support for Chef's Knife Command"
   s.email = "spheromak@gmail.com"
   s.extra_rdoc_files = [
@@ -23,11 +23,14 @@ Gem::Specification.new do |s|
     "lib/chef/knife/xapi_guest_list.rb",
     "lib/chef/knife/xapi_guest_start.rb",
     "lib/chef/knife/xapi_guest_stop.rb",
+    "lib/chef/knife/xapi_network_list.rb",
     "lib/chef/knife/xapi_vdi_attach.rb",
     "lib/chef/knife/xapi_vdi_create.rb",
     "lib/chef/knife/xapi_vdi_delete.rb",
     "lib/chef/knife/xapi_vdi_detach.rb",
     "lib/chef/knife/xapi_vdi_list.rb",
+    "lib/chef/knife/xapi_vif_list.rb",
+    "lib/chef/knife/xapi_vlan_list.rb",
     "lib/chef/knife/xapi_vmselect.rb",
     "lib/knife-xapi/version.rb",
     "lib/xenapi/README",
@@ -48,15 +51,24 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+      s.add_runtime_dependency(%q<chef>, [">= 0"])
+      s.add_runtime_dependency(%q<highline>, [">= 0"])
+      s.add_runtime_dependency(%q<units>, [">= 0"])
       s.add_runtime_dependency(%q<chef>, [">= 0.9.14"])
       s.add_runtime_dependency(%q<highline>, [">= 0"])
       s.add_runtime_dependency(%q<units>, [">= 0"])
     else
+      s.add_dependency(%q<chef>, [">= 0"])
+      s.add_dependency(%q<highline>, [">= 0"])
+      s.add_dependency(%q<units>, [">= 0"])
       s.add_dependency(%q<chef>, [">= 0.9.14"])
       s.add_dependency(%q<highline>, [">= 0"])
       s.add_dependency(%q<units>, [">= 0"])
     end
   else
+    s.add_dependency(%q<chef>, [">= 0"])
+    s.add_dependency(%q<highline>, [">= 0"])
+    s.add_dependency(%q<units>, [">= 0"])
     s.add_dependency(%q<chef>, [">= 0.9.14"])
     s.add_dependency(%q<highline>, [">= 0"])
     s.add_dependency(%q<units>, [">= 0"])
