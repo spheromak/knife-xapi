@@ -31,7 +31,6 @@ end
 
 
 require 'chef/knife'
-require 'units/standard'
 
 require_relative '../../xenapi/xenapi.rb'
 
@@ -304,14 +303,13 @@ class Chef::Knife
     # rounds to whole numbers
     def input_to_bytes(size)
       case size
-      when /g|gb/i
-        size.to_i.gb.to_bytes.to_i
       when /m|mb/i
-        size.to_i.mb.to_bytes.to_i
+        size.to_i * (1024 ** 2)
       when /t|tb/i
-        size.to_i.tb.to_bytes.to_i
+        size.to_i * (1024 ** 4)
       else
-        size.to_i.gb.to_bytes.to_i
+        # default is gigabytes
+        size.to_i * (1024 ** 3)
       end
     end
 
@@ -512,7 +510,7 @@ class Chef::Knife
       task_ref = get_task_ref(task)
     end
 
-   
+
     def get_host_ref(hostname)
       xapi.host.get_all.each do |ref|
         name = xapi.host.get_name_label ref
