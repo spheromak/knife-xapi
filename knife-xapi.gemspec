@@ -55,14 +55,12 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<units>, [">= 0"])
       s.add_runtime_dependency(%q<chef>, [">= 0.9.14"])
       s.add_runtime_dependency(%q<highline>, [">= 0"])
-      s.add_runtime_dependency(%q<units>, [">= 0"])
     else
       s.add_dependency(%q<chef>, [">= 0"])
       s.add_dependency(%q<highline>, [">= 0"])
       s.add_dependency(%q<units>, [">= 0"])
       s.add_dependency(%q<chef>, [">= 0.9.14"])
       s.add_dependency(%q<highline>, [">= 0"])
-      s.add_dependency(%q<units>, [">= 0"])
     end
   else
     s.add_dependency(%q<chef>, [">= 0"])
@@ -70,7 +68,6 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<units>, [">= 0"])
     s.add_dependency(%q<chef>, [">= 0.9.14"])
     s.add_dependency(%q<highline>, [">= 0"])
-    s.add_dependency(%q<units>, [">= 0"])
   end
 end
 
