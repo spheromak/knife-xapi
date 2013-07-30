@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "knife-xapi"
-  s.version = "0.5.3"
+  s.version = "0.5.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jesse Nelson"]
-  s.date = "2013-05-23"
+  s.date = "2013-07-30"
   s.description = "Xen API Support for Chef's Knife Command"
   s.email = "spheromak@gmail.com"
   s.extra_rdoc_files = [
@@ -55,12 +55,14 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<units>, [">= 0"])
       s.add_runtime_dependency(%q<chef>, [">= 0.9.14"])
       s.add_runtime_dependency(%q<highline>, [">= 0"])
+      s.add_runtime_dependency(%q<units>, [">= 0"])
     else
       s.add_dependency(%q<chef>, [">= 0"])
       s.add_dependency(%q<highline>, [">= 0"])
       s.add_dependency(%q<units>, [">= 0"])
       s.add_dependency(%q<chef>, [">= 0.9.14"])
       s.add_dependency(%q<highline>, [">= 0"])
+      s.add_dependency(%q<units>, [">= 0"])
     end
   else
     s.add_dependency(%q<chef>, [">= 0"])
@@ -68,6 +70,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<units>, [">= 0"])
     s.add_dependency(%q<chef>, [">= 0.9.14"])
     s.add_dependency(%q<highline>, [">= 0"])
+    s.add_dependency(%q<units>, [">= 0"])
   end
 end
 
