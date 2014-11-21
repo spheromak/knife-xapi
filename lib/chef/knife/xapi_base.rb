@@ -462,8 +462,8 @@ class Chef::Knife
       color_kv "  UUID: ",  record['uuid'], [:magenta, :cyan]
       color_kv "  Description: ", record['name_description'], [:magenta, :cyan]
       color_kv "  Type: ", record['type'], [:magenta, :cyan]
-      color_kv "  Size (gb): ", record['virtual_size'].to_i.bytes.to_gb.to_s, [:magenta, :cyan]
-      color_kv "  Utilized (gb): ", record['physical_utilisation'].to_i.bytes.to_gb.to_s, [:magenta, :cyan]
+      color_kv "  Size (gb): ", (record['virtual_size'].to_i / (1024 ** 3)).to_s, [:magenta, :cyan]
+      color_kv "  Utilized (gb): ", (record['physical_utilisation'].to_i / (1024 ** 3)).to_s, [:magenta, :cyan]
       record["VBDs"].each do |vbd|
         vm = xapi.VBD.get_VM(vbd)
         color_kv "    VM name: ",  xapi.VM.get_name_label(vm)
