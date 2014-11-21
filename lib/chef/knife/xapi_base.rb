@@ -291,12 +291,12 @@ class Chef::Knife
 
     # return an SR record from the name_label
     def get_sr_by_name(name)
-      sr_ref = xapi.SR.get_by_name_label(name)
+      sr_ref = xapi.SR.get_by_name_label(name)[0]
       if sr_ref.empty? or sr_ref.nil?
         ui.error "SR name #{h.color( name ) } not found"
         return nil
       end
-      sr = xapi.SR.get_record( sr_ref )
+      sr_ref
     end
 
     # convert 1g/1m/1t to bytes
