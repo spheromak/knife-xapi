@@ -243,7 +243,12 @@ class Chef::Knife
 
     # generate a random mac address
     def generate_mac
-      ("%02x"%(rand(64)*4|2))+(0..4).inject(""){|s,x|s+":%02x"%rand(256)}
+       
+      if locate_config_value(:macaddress).nil?
+        ("%02x"%(rand(64)*4|2))+(0..4).inject(""){|s,x|s+":%02x"%rand(256)}
+      else
+        locate_config_value(:macaddress)
+      end
     end
 
     # add a new vif
