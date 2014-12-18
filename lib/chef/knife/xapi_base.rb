@@ -289,6 +289,11 @@ class Chef::Knife
       end
     end
 
+    # returns true if uuid is a uuid 
+    def is_uuid?(uuid)
+      uuid =~ /[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}/i 
+    end
+
     # returns sr_ref to the default sr on pool
     def find_default_sr()
       xapi.pool.get_default_SR( xapi.pool.get_all()[0] )
@@ -299,6 +304,16 @@ class Chef::Knife
       sr_ref = xapi.SR.get_by_name_label(name)[0]
       if sr_ref.empty? or sr_ref.nil?
         ui.error "SR name #{h.color( name ) } not found"
+        return nil
+      end
+      sr_ref
+    end
+    
+    # return SR record from uuid 
+    def get_sr_by_uuid(uuid)
+      sr_ref = xapi.SR.get_by_uuid(uuid)
+      if sr_ref.empty? or sr_ref.nil?
+        ui.error "SR not found #{h.color( uuid )} "
         return nil
       end
       sr_ref

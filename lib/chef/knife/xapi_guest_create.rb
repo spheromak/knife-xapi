@@ -302,9 +302,14 @@ class Chef
           end
 
           unless locate_config_value(:xapi_skip_disk)
+            ui_sr = locate_config_value(:xapi_sr)
             sr_ref = nil
             if locate_config_value(:xapi_sr)
-              sr_ref = get_sr_by_name( locate_config_value(:xapi_sr) )
+              if is_uuid?(ui_sr)
+                sr_ref = get_sr_by_uuid(ui_sr) 
+              else 
+                sr_ref = get_sr_by_name(ui_sr)
+              end
             else
               sr_ref = find_default_sr
             end
