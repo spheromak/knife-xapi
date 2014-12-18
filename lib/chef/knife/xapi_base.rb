@@ -403,7 +403,7 @@ class Chef::Knife
     end
 
 	   # detach_vdi
-	   def detach_vdi(vdi_ref)
+    def detach_vdi(vdi_ref)
       vbd_refs = xapi.VDI.get_VBDs(vdi_ref)
 
       # more than one VBD, so we ned to find the vbd with the vdi
@@ -431,11 +431,11 @@ class Chef::Knife
       ui.msg 'Waiting for VDI detach'
       task_ref = get_task_ref(task)
       task_ref
-  end
+    end
 
-	   def get_vbd_by_uuid(id)
+    def get_vbd_by_uuid(id)
       xapi.VBD.get_by_uuid(id)
-  end
+    end
 
     # try to get a guest ip and return it
     def get_guest_ip(vm_ref)

@@ -226,6 +226,27 @@ class Chef
         ui.msg 'Timeout waiting for XAPI to report IP address '
       end
 
+
+      def resolve_sr_ref
+        ui_sr = locate_config_value(:xapi_sr)
+        sr_ref = nil
+        if locate_config_value(:xapi_sr)
+          if is_uuid?(ui_sr)
+            sr_ref = get_sr_by_uuid(ui_sr)
+          else
+            sr_ref = get_sr_by_name(ui_sr)
+          end
+        else
+          sr_ref = find_default_sr
+        end
+
+        if sr_ref.nil?
+          ui.error "SR specified not found or can't be used Aborting"
+          fail(vm_ref) if sr_ref.nil?
+        end
+        sr_ref
+      end
+
       def run
         server_name = @name_args[0]
         domainname = locate_config_value(:domain)
@@ -237,9 +258,16 @@ class Chef
 
         # get the template vm we are going to build from
         template_ref = find_template(locate_config_value(:xapi_vm_template))
+        sr_ref = resolve_sr_ref 
 
+        if locate_config_value(:xapi_sr)
+		      Chef::Log.debug "Copying Guest from Template: #{h.color(template_ref, :bold, :cyan)}"
+          task = xapi.Async.VM.copy(template_ref, fqdn, sr_ref)
+        else 
 		      Chef::Log.debug "Cloning Guest from Template: #{h.color(template_ref, :bold, :cyan)}"
-        task = xapi.Async.VM.clone(template_ref, fqdn)
+          task = xapi.Async.VM.clone(template_ref, fqdn)
+        end
+
         ui.msg 'Waiting on Template Clone'
         vm_ref = get_task_ref(task)
 
@@ -259,8 +287,10 @@ class Chef
             other_config = record['other_config']
           end
           other_config['install-repository'] = repo
-          # for some reason the deb disks template is wonkey and has weird entry here
-          other_config.delete_if { |k, _v| k == 'disks' }
+         
+          # remove any disk config/xml template might be trying to do (ubuntu)
+          other_config.delete_if {|k,v| k=="disks"} 
+
           Chef::Log.debug "Other_config: #{other_config.inspect}"
           xapi.VM.set_other_config(vm_ref, other_config)
 
@@ -297,25 +327,9 @@ class Chef
             end
           end
 
+          Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
+
           unless locate_config_value(:xapi_skip_disk)
-            ui_sr = locate_config_value(:xapi_sr)
-            sr_ref = nil
-            if locate_config_value(:xapi_sr)
-              if is_uuid?(ui_sr)
-                sr_ref = get_sr_by_uuid(ui_sr)
-              else
-                sr_ref = get_sr_by_name(ui_sr)
-              end
-            else
-              sr_ref = find_default_sr
-            end
-
-            if sr_ref.nil?
-              ui.error "SR specified not found or can't be used Aborting"
-              fail(vm_ref) if sr_ref.nil?
-            end
-            Chef::Log.debug "SR: #{h.color sr_ref, :cyan}"
-
             disk_size = locate_config_value(:xapi_disk_size)
             # setup disks
             if !disk_size.nil? && disk_size.to_i > 0
@@ -356,7 +370,7 @@ class Chef
         end
 
         if locate_config_value(:run_list).empty?
-          unless config_value(:template_file) or
+          unless locate_config_value(:template_file) or
                  locate_config_value(:bootstrap_template) != 'chef-full' 
             exit 0
           end
