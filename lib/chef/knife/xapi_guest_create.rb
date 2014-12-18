@@ -62,6 +62,12 @@ class Chef
         :description => "Install repo for this template (if needed)",
         :proc => Proc.new { |key| Chef::Config[:knife][:install_repo] = key }
 
+      option :macaddress,
+        :short => "-m MAC Address",
+        :long => "--mac-address",
+        :description => "Use a pre-generated MAC address (optional)",
+        :proc => Proc.new { |key| Chef::Config[:knife][:macaddress] = key }
+
       option :xapi_sr,
         :short => "-S Storage repo to provision VM from",
         :long  => "--xapi-sr",
