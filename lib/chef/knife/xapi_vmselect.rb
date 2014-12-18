@@ -1,20 +1,19 @@
 
 class Chef::Knife
   module XapiVmSelect
-
     def self.included(includer)
       includer.class_eval do
-      option :uuid,
-        :short => "-U",
-        :long => "--uuid",
-        :description => "Treat the label as a UUID not a name label"
+        option :uuid,
+               short: '-U',
+               long: '--uuid',
+               description: 'Treat the label as a UUID not a name label'
       end
     end
 
     def select_vm(name)
       if name.nil?
-        ui.msg "Must Provide VM Name"
-        ui.msg "Usage: " + banner
+        ui.msg 'Must Provide VM Name'
+        ui.msg 'Usage: ' + banner
         exit 1
       end
 
@@ -33,7 +32,7 @@ class Chef::Knife
 
       if vms.length > 1
         vm = user_select(vms)
-        if vm == :all 
+        if vm == :all
           return vms
         end
       else
@@ -41,6 +40,5 @@ class Chef::Knife
       end
       vm
     end
-
   end
 end

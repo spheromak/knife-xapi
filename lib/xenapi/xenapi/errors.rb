@@ -1,7 +1,7 @@
 module XenApi #:nodoc:
   module Errors #:nodoc:
     # Generic errror case, all XenApi exceptions inherit from this for ease of catching
-    class GenericError < RuntimeError;
+    class GenericError < RuntimeError
       # The raw error description according to the server, typically an array
       attr_reader :description
 
@@ -38,7 +38,7 @@ module XenApi #:nodoc:
     class EventsLost < GenericError; end
 
     # This operation cannot be performed because it would invalidate VM
-    # failover planning such that the system would be unable to guarantee
+    #  failover planning such that the system would be unable to guarantee
     # to restart protected VMs after a Host failure.
     #
     # Raised by
@@ -119,7 +119,7 @@ module XenApi #:nodoc:
     # - VM.pool_migrate
     # - VM.provision
     # - VM.resume
-    # - VM.resume_on
+    #  - VM.resume_on
     # - VM.revert
     # - VM.snapshot
     # - VM.snapshot_with_quiesce

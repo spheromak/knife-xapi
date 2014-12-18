@@ -29,8 +29,8 @@ module XenApi #:nodoc:
     # @param [String,Symbol] meth Method prefix name
     # @param [...] args Method arguments
     # @return [Dispatcher] dispatcher instance to handle the +Async.meth+ prefix
-    def method_missing(meth, *args)
+    def method_missing(meth, *_args)
       Dispatcher.new(@client, "Async.#{meth}", @sender)
     end
-  end  
+  end
 end

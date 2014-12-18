@@ -1,7 +1,7 @@
 module XenApi
   class XMLRPCClient < ::XMLRPC::Client
-    def initialize(host=nil, path=nil, port=nil, proxy_host=nil, proxy_port=nil,
-                   user=nil, password=nil, use_ssl=nil, timeout=nil)
+    def initialize(host = nil, path = nil, port = nil, proxy_host = nil, proxy_port = nil,
+                   user = nil, password = nil, use_ssl = nil, timeout = nil)
 
       if use_ssl == :verify_none
         use_ssl = :verify_none

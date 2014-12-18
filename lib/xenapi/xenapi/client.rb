@@ -107,10 +107,10 @@ module XenApi #:nodoc:
     # @param [Integer] timeout Maximum number of seconds to wait for an API response
     # @param [Symbol] ssl_verify SSL certificate verification mode.
     #   Can be one of :verify_none or :verify_peer
-    def initialize(uris, timeout=10, ssl_verify=:verify_peer)
+    def initialize(uris, timeout = 10, ssl_verify = :verify_peer)
       @timeout = timeout
       @ssl_verify = ssl_verify
-      @uris = [uris].flatten.collect do |uri|
+      @uris = [uris].flatten.map do |uri|
         uri = URI.parse(uri)
         uri.path = '/' if uri.path == ''
         uri
@@ -179,7 +179,7 @@ module XenApi #:nodoc:
     # @return [String] API version
     def api_version
       @api_version ||= begin
-        pool = self.pool.get_all()[0]
+        pool = self.pool.get_all[0]
         host = self.pool.get_master(pool)
         major = self.host.get_API_version_major(host)
         minor = self.host.get_API_version_minor(host)
@@ -228,24 +228,23 @@ module XenApi #:nodoc:
     # object state is invalid. No API calls can be performed unless one of
     # the login methods is called again.
     def logout
-      begin
-        if @login_meth.to_s.start_with? "slave_local"
-          _do_call("session.local_logout", [@session])
-        else
-          _do_call("session.logout", [@session])
-        end
-      rescue
-        # We don't care about any error. If it works: great, if not: shit happens...
-        nil
-      ensure
-        @session = ""
-        @login_meth = nil
-        @login_args = []
-        @api_version = nil
+      if @login_meth.to_s.start_with? 'slave_local'
+        _do_call('session.local_logout', [@session])
+      else
+        _do_call('session.logout', [@session])
       end
+    rescue
+      # We don't care about any error. If it works: great, if not: shit happens...
+      nil
+    ensure
+      @session = ''
+      @login_meth = nil
+      @login_args = []
+      @api_version = nil
     end
 
-  protected
+    protected
+
     # @param [String,Symbol] meth API method to call
     # @param [Array] args Arguments to pass to the method call
     # @raise [SessionInvalid] Reauthentication failed
@@ -253,39 +252,38 @@ module XenApi #:nodoc:
     # @raise [EOFError] XMLRPC::Client exception
     # @raise [Errno::EPIPE] XMLRPC::Client exception
     def _call(meth, *args)
-      begin
-        _do_call(meth, args.dup.unshift(@session))
-      rescue SessionInvalid
-        _relogin_attempts = (_relogin_attempts || 0) + 1
-        _relogin
-        retry unless _relogin_attempts > 2
-        _reconnect ? retry : raise
-      rescue Timeout::Error
-        _timeout_retries = (_timeout_retries || 0) + 1
-        @client = nil
-        retry unless _timeout_retries > 1
-        _reconnect ? retry : raise
-      rescue EOFError
-        _eof_retries = (_eof_retries || 0) + 1
-        @client = nil
-        retry unless _eof_retries > 1
-        _reconnect ? retry : raise
-      rescue Errno::EPIPE
-        _epipe_retries = (_epipe_retries || 0) + 1
-        @client = nil
-        retry unless _epipe_retries > 1
-        _reconnect ? retry : raise
-      rescue Errno::EHOSTUNREACH
-        @client = nil
-        _reconnect ? retry : raise
-      end
+      _do_call(meth, args.dup.unshift(@session))
+    rescue SessionInvalid
+      _relogin_attempts = (_relogin_attempts || 0) + 1
+      _relogin
+      retry unless _relogin_attempts > 2
+      _reconnect ? retry : raise
+    rescue Timeout::Error
+      _timeout_retries = (_timeout_retries || 0) + 1
+      @client = nil
+      retry unless _timeout_retries > 1
+      _reconnect ? retry : raise
+    rescue EOFError
+      _eof_retries = (_eof_retries || 0) + 1
+      @client = nil
+      retry unless _eof_retries > 1
+      _reconnect ? retry : raise
+    rescue Errno::EPIPE
+      _epipe_retries = (_epipe_retries || 0) + 1
+      @client = nil
+      retry unless _epipe_retries > 1
+      _reconnect ? retry : raise
+    rescue Errno::EHOSTUNREACH
+      @client = nil
+      _reconnect ? retry : raise
     end
 
-  private
+    private
+
     # Reauthenticate with the API
     # @raise [LoginRequired] Missing authentication credentials
     def _relogin
-      raise LoginRequired if @login_meth.nil? || @login_args.nil? || @login_args.empty?
+      fail LoginRequired if @login_meth.nil? || @login_args.nil? || @login_args.empty?
       _login(@login_meth, *@login_args)
     end
 
@@ -315,7 +313,7 @@ module XenApi #:nodoc:
           failed_uris << @uri
         end
       end
-      raise Errors::NoHostsAvailable.new("No server reachable. Giving up.")
+      fail Errors::NoHostsAvailable.new('No server reachable. Giving up.')
     end
 
     # Login to the API
@@ -347,7 +345,7 @@ module XenApi #:nodoc:
     #
     # @return [XMLRPC::Client] XMLRPC client instance
     def _client
-      @client ||= XMLRPCClient.new(@uri.host, @uri.path, @uri.port, nil, nil, nil, nil, @uri.scheme == "https" ? @ssl_verify : false, @timeout)
+      @client ||= XMLRPCClient.new(@uri.host, @uri.path, @uri.port, nil, nil, nil, nil, @uri.scheme == 'https' ? @ssl_verify : false, @timeout)
     end
 
     # Perform XMLRPC method call.
@@ -361,21 +359,21 @@ module XenApi #:nodoc:
     # @raise [ResponseMissingErrorDescriptionField] API response error missing +ErrorDescription+ field
     # @raise [SessionInvalid] API session has expired
     # @raise [Errors::GenericError] API method specific error
-    def _do_call(meth, args, attempts = 3)
+    def _do_call(meth, args, _attempts = 3)
       r = _client.call(meth, *args)
-      raise ResponseMissingStatusField unless r.has_key?('Status')
+      fail ResponseMissingStatusField unless r.key?('Status')
 
       if r['Status'] == 'Success'
-        return r['Value'] if r.has_key?('Value')
-        raise ResponseMissingValueField
+        return r['Value'] if r.key?('Value')
+        fail ResponseMissingValueField
       else
-        raise ResponseMissingErrorDescriptionField unless r.has_key?('ErrorDescription')
-        raise SessionInvalid if r['ErrorDescription'][0] == 'SESSION_INVALID'
+        fail ResponseMissingErrorDescriptionField unless r.key?('ErrorDescription')
+        fail SessionInvalid if r['ErrorDescription'][0] == 'SESSION_INVALID'
 
         ed = r['ErrorDescription'].shift
         ex = Errors.exception_class_from_desc(ed)
         r['ErrorDescription'].unshift(ed) if ex == Errors::GenericError
-        raise ex, r['ErrorDescription']
+        fail ex, r['ErrorDescription']
       end
     end
   end

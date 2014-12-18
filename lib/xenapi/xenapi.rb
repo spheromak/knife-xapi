@@ -23,14 +23,14 @@ module XenApi
   # @yieldparam [Client] client Client instance
   # @return [Object] block return value
   # @raise [NoHostsAvailable] No hosts could be contacted
-  def self.connect(uris, username, password, options={})
+  def self.connect(uris, username, password, options = {})
     uris = uris.respond_to?(:shift) ? uris.dup : [uris]
     method = options[:slave_login] ? :slave_local_login_with_password : :login_with_password
 
     client = Client.new(uris, options[:timeout] || 10, options[:ssl_verify] || :verify_peer)
     begin
       args = [method, username, password]
-      args << options[:api_version] if options.has_key?(:api_version)
+      args << options[:api_version] if options.key?(:api_version)
       client.send(*args)
 
       if block_given?
@@ -44,4 +44,3 @@ module XenApi
     end
   end
 end
-
