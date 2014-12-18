@@ -356,7 +356,8 @@ class Chef
         end
 
         if locate_config_value(:run_list).empty?
-          unless  locate_config_value(:template_file) || locate_config_value(:bootstrap_template)
+          unless config_value(:template_file) or
+                 locate_config_value(:bootstrap_template) != 'chef-full' 
             exit 0
           end
         end
