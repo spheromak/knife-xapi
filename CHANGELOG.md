@@ -1,3 +1,6 @@
+## 0.6.1
+* Fix duplicate dependencies in gemspec.
+
 ## 0.6.0 
 * Adding Changelog
 * able to pass uuid to -S 
