@@ -132,7 +132,7 @@ class Chef
              description: 'The ssh port'
 
       option :ping_timeout,
-             long: '--ping-timeout',
+             long: '--ping-timeout SECONDS',
              description: 'Seconds to timeout waiting for ip from guest'
 
       option :connect_timeout,
