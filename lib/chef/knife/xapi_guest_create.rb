@@ -31,6 +31,7 @@ class Chef
         ssh_user: 'root',
         ssh_port: '22',
         ping_timeout: 600,
+        connect_timeout: 600,
         install_repo: 'http://isoredirect.centos.org/centos/6/os/x86_64/',
         kernel_params: 'graphical utf8',
         xapi_disk_size: '8g',
@@ -133,6 +134,10 @@ class Chef
       option :ping_timeout,
              long: '--ping-timeout',
              description: 'Seconds to timeout waiting for ip from guest'
+
+      option :connect_timeout,
+             long: '--connect-timeout SECONDS',
+             description: 'Seconds to timeout while trying to connect to a guest'
 
       option :bootstrap_version,
              long: '--bootstrap-version VERSION',
@@ -384,7 +389,7 @@ class Chef
         ui.msg "Trying to connect to guest @ #{guest_addr} "
 
         begin
-          timeout(480) do
+          timeout(locate_config_value(:connect_timeout).to_i) do
             print('.') until tcp_test_ssh(guest_addr) do
               sleep @initial_sleep_delay ||=  10
               ui.msg("#{ h.color 'OK!', :green}")
