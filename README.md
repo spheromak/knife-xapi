@@ -38,6 +38,7 @@ Config options are extendable in the knife.rb the folowing config options can be
 * __knife[:host_key_verify]__  true/false  Honor hostkey verification or don't
 * __knife[:ping_timeout]__ Seconds to timeout while waiting for an IP to be returned from guest
 * __knife[:json_attributes]__ A JSON string to be added to the first run of chef-client
+* __knife[:connect_timeout]__ Seconds to timeout while trying to connect to a guest
 
 
 
